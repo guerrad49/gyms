@@ -1,0 +1,5 @@
+DOWNLOADS_PATH    = /full/path/to/your/downloads/folder
+BADGES_PATH       = /full/path/to/your/badges/folder
+GOOGLE_SHEET_NAME = <name_of_your_google_sheet>
+JSON_KEY_FILE     = <name_of_you_json_keyfile_with_json_extension>
+EMAIL             = <your_email>
