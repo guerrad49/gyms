@@ -15,6 +15,7 @@ import numpy as np
 import pandas as pd
 from dotenv import load_dotenv    # load env vars
 
+import cv2
 import pytesseract       # packages for reading
 from PIL import Image    # and enhancing images
 
@@ -31,61 +32,52 @@ DOWNLOADS = os.path.join(os.getenv('HOME'), 'Downloads')
 #===============================IMAGE CLASS===================================
 
 
-
 class ImageClass:
-    STANDARD_SIZE = (750, 1334)
-    BOX_TOP = 50
+    SCALE_FACTOR = 1.75
     PATTERN = re.compile(r"""
         .+TREATS
-        \n\n
+        [\n\ ]+
         (?P<victories>\d{1,4})           # victories
-        \n\n
+        [\n\ ]+
         ((?P<days>\d{1,3})d[\ ]?)?       # days defended
         ((?P<hours>\d{1,2})h[\ ]?)?      # hours defended
         ((?P<minutes>\d{1,2})m[\ ]?)?    # minutes defended
         ((\d{1,2})s)?                    # seconds defended (very rare)
-        \n\n
+        [\n\ ]+
         (?P<treats>\d{1,4})              # treats
         """, re.X|re.S)
 
 
     def __init__(self, filename):
-        """Constructor keeps a copy of image file"""
-
-        with Image.open(filename) as im:
-            self.image = im.copy()
-        self.as_thumbnail()
-        self.cropped()
-        self.set_image_text()
+        self.image = cv2.imread(filename)
+        self.height = self.image.shape[0]
+        self.width = self.image.shape[1]
 
 
-    def as_thumbnail(self):
-        """Resizes image while keeping aspect ratio"""
-
-        self.image.thumbnail(self.STANDARD_SIZE)
-
-
-    def cropped(self):
-        """Removes mobile headers from image"""
-
-        box_right  = self.image.size[0]
-        box_bottom = self.image.size[1]
-        box = (0, self.BOX_TOP, box_right, box_bottom)
-        self.image = self.image.crop(box)
+    def best_text(self, img):
+        x1 = round(img.width * self.SCALE_FACTOR)
+        y1 = round(img.height * self.SCALE_FACTOR)
+        resized = cv2.resize(img, (x1,y1))
+        gray    = cv2.cvtColor(resized, cv2.COLOR_BGR2GRAY)
+        _, thresh = cv2.threshold(gray, 200, 230, cv2.THRESH_BINARY)
+        return pytesseract.image_to_string(thresh)
 
 
-    def set_image_text(self):
+    def get_title_txt(self):
+        cropped = self.image[50:140, 0:self.width]
+        txt = self.best_text(cropped)
+        txt = txt.replace("’", "'")     # incorrect apostrophe
+        txt = txt.replace('\n', ' ')
+        txt = txt.strip().lower()
+
+
+    def get_stats_txt(self):
         """Extracts text from image"""
 
-        my_config = r'--psm 12'
-        txt = pytesseract.image_to_string(self.image, config=my_config)
-        self.img_txt = txt
-
-
-    def parse_image_text(self):
-        """Parses image text using regex"""
-
-        match = re.search(self.PATTERN, self.img_txt)
+        cropped = self.image[975:1100, 0:self.width]
+        txt = self.best_text(cropped)
+        txt = txt.replace('O', '0')
+        match = re.search(self.PATTERN, txt)
 
         if match == None:
             return None
