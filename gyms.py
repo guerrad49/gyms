@@ -34,15 +34,15 @@ DOWNLOADS = os.path.join(os.getenv('HOME'), 'Downloads')
 
 class ImageClass:
     SCALE_FACTOR = 1.75
-    PATTERN = re.compile(r"""
+    STATS_RE_PAT = re.compile(r"""
         .+TREATS
         [\n\ ]+
         (?P<victories>\d{1,4})           # victories
         [\n\ ]+
-        ((?P<days>\d{1,3})d[\ ]?)?       # days defended
-        ((?P<hours>\d{1,2})h[\ ]?)?      # hours defended
-        ((?P<minutes>\d{1,2})m[\ ]?)?    # minutes defended
-        ((\d{1,2})s)?                    # seconds defended (very rare)
+        ((?P<days>\d{1,3})d[\ ]?)?       # days
+        ((?P<hours>\d{1,2})h[\ ]?)?      # hours
+        ((?P<minutes>\d{1,2})m[\ ]?)?    # minutes
+        ((\d{1,2})s)?                    # seconds (very rare)
         [\n\ ]+
         (?P<treats>\d{1,4})              # treats
         """, re.X|re.S)
@@ -50,35 +50,46 @@ class ImageClass:
 
     def __init__(self, filename):
         self.image = cv2.imread(filename)
-        self.height = self.image.shape[0]
-        self.width = self.image.shape[1]
+        self.h = self.image.shape[0]
+        self.w = self.image.shape[1]
 
 
-    def best_text(self, img):
-        x1 = round(img.width * self.SCALE_FACTOR)
-        y1 = round(img.height * self.SCALE_FACTOR)
-        resized = cv2.resize(img, (x1,y1))
-        gray    = cv2.cvtColor(resized, cv2.COLOR_BGR2GRAY)
-        _, thresh = cv2.threshold(gray, 200, 230, cv2.THRESH_BINARY)
+    def best_txt(self, img=None):
+        '''Pre-process image and extract text'''
+
+        if img is None:
+            img = self.image
+        
+        w1 = round(img.w * self.SCALE_FACTOR)
+        h1 = round(img.h * self.SCALE_FACTOR)
+        resized   = cv2.resize(img, (w1, h1))
+        grayscale = cv2.cvtColor(resized, cv2.COLOR_BGR2GRAY)
+        _, thresh = cv2.threshold(grayscale, 200, 230, cv2.THRESH_BINARY)
+
         return pytesseract.image_to_string(thresh)
 
 
     def get_title_txt(self):
-        cropped = self.image[50:140, 0:self.width]
-        txt = self.best_text(cropped)
-        txt = txt.replace("’", "'")     # incorrect apostrophe
+        '''Extract image title from predetermined crop'''
+
+        cropped = self.image[50:140, 0:self.w]
+        txt = self.best_txt(cropped)
+
+        # string clean up
+        txt = txt.replace("’", "'")
         txt = txt.replace('\n', ' ')
-        txt = txt.strip().lower()
+
+        return txt.strip().lower()
 
 
-    def get_stats_txt(self):
-        """Extracts text from image"""
+    def get_stats_info(self):
+        '''Extract image stats from predetermined crop'''
 
-        cropped = self.image[975:1100, 0:self.width]
-        txt = self.best_text(cropped)
-        txt = txt.replace('O', '0')
-        match = re.search(self.PATTERN, txt)
+        cropped = self.image[975:1100, 0:self.w]
+        txt = self.best_txt(cropped)
+        txt = txt.replace('O', '0')   # string clean up
 
+        match = re.search(self.STATS_RE_PAT, txt)
         if match == None:
             return None
         else:
