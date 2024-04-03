@@ -27,7 +27,7 @@ from oauth2client.service_account import ServiceAccountCredentials as SAC
 
 VARIABLES = 'variables.env'
 DOWNLOADS = os.path.join(os.getenv('HOME'), 'Downloads')
-
+BADGES    = os.path.join(os.getcwd(), 'badges')
 
 #===============================IMAGE CLASS===================================
 
@@ -114,8 +114,7 @@ class GoogleSheet:
     def establish_connetion(self):
         """Connect with google API"""
 
-        key_path    = os.path.join(SUBDIR, KEYFILE)
-        credentials = SAC.from_json_keyfile_name(key_path, self.SCOPE)
+        credentials = SAC.from_json_keyfile_name(KEYFILE, self.SCOPE)
         self.client = gspread.authorize(credentials)
         print('INFO - Connection to Google Drive successful.')
 
@@ -125,7 +124,8 @@ class GoogleSheet:
 
         self.sheet    = self.client.open(SHEET).sheet1
         self.df       = pd.DataFrame(self.sheet.get_all_records())
-#        self.df.index = np.arange(2, len(self.df) + 2)
+        # data starts at sheet row 2
+        self.df.index = np.arange(2, len(self.df) + 2)
         print('INFO - Data extract successful.')
 
     
@@ -278,13 +278,14 @@ class Processor:
         
         prompt  = 'INFO - Found the following images:\n'
         prompt += '\n'.join(self.queue)
+        prompt += '\n'
         print(prompt)
-        print()
         return True
     
     
     def run_scanner(self):
         gs = GoogleSheet()
+        pdb.set_trace()
         gs.partition()
 
         ColorPrint('\nINFO - Begin scanning process.\n').proc()
@@ -337,41 +338,19 @@ class ColorPrint:
 
 #===============================FUNCTIONS=====================================
 
-
-def has_valid_structure():
-    global SUBDIR, BADGES
-    error_prompt = "error: could not locate '{}' directory"
-
-    # check 'subfiles' is in tree structure
-    SUBDIR = os.path.join(os.getcwd(), 'subfiles')
-    if not os.path.isdir(SUBDIR):
-        ColorPrint(error_prompt.format(SUBDIR)).fail()
-        return False
-    
-    # check 'badges' is in tree structure
-    BADGES = os.path.join(os.getcwd(), 'badges')    
-    if not os.path.isdir(BADGES):
-        ColorPrint(error_prompt.format(BADGES)).fail()
-        return False
-    
-    return True
-
 def has_valid_environment():
+    subdir = os.path.join(os.getcwd(), 'subfiles')
+
     global KEYFILE, SHEET, AGENT
     error_prompt = "error: could not locate '{}' file"
-
-    # check 'variables.env' exists
-    if VARIABLES not in os.listdir(SUBDIR):
-        ColorPrint(error_prompt.format(VARIABLES)).fail()
-        return False
     
     # load environment
-    env_path = os.path.join(SUBDIR, VARIABLES)
+    env_path = os.path.join(subdir, VARIABLES)
     load_dotenv(env_path)
     
     # check json key file exits
-    KEYFILE = os.getenv("KEYFILE")
-    if KEYFILE not in os.listdir(SUBDIR):
+    KEYFILE = os.path.join(subdir, os.getenv("KEYFILE"))
+    if os.path.isfile(KEYFILE):
         ColorPrint(error_prompt.format(KEYFILE)).fail()
         return False
     
@@ -403,9 +382,6 @@ def parse_args():
 if __name__ == "__main__":
     args = parse_args()
 
-    if not has_valid_structure():
-        sys.exit(0)
-    
     if not has_valid_environment():
         sys.exit(0)
     
