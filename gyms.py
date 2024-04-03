@@ -186,7 +186,7 @@ class GymClass:
         self.set_state()
 
     def set_title(self, d):
-        pass
+        self.title = d['title']
 
     def set_victories(self, d):
         self.victories = int(d['victories'])
@@ -285,25 +285,25 @@ class Processor:
     
     def run_scanner(self):
         gs = GoogleSheet()
-        pdb.set_trace()
         gs.partition()
 
         ColorPrint('\nINFO - Begin scanning process.\n').proc()
 
-        for i in [30,848,849,1183,1184]:
-            name = 'IMG_{:04d}.PNG'.format(i)
-            full_path = os.path.join(BADGES, name)
-            img = ImageClass(full_path)
-            data = img.parse_image_text()
+        for file in self.queue:
+            img_data = dict()
+            img = ImageClass(file)
+            img_data['title'] = img.get_title_txt()
+            stats = img.get_stats_info()
 
-            if data is None:
-                continue
+            if stats is None:
+                pass
+            else:
+                img_data.update(stats)
 
-#            idx = gs.locate_by_name(data['title'])
-            coords = gs.df[gs.df['image']==i].iat[0,6]
-            g = GymClass(i, data, coords)
-            row = g.describe()
-            print(row)
+            idx = gs.locate_by_name(img_data['title'])
+            g = GymClass(idx, img_data, gs.df.at[idx,'coordinates'])
+            sheet_row = g.describe()
+            print(sheet_row)
             print()
 
 
