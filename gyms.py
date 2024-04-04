@@ -29,72 +29,6 @@ VARIABLES = 'variables.env'
 DOWNLOADS = os.path.join(os.getenv('HOME'), 'Downloads')
 BADGES    = os.path.join(os.getcwd(), 'badges')
 
-#===============================IMAGE CLASS===================================
-
-
-class ImageClass:
-    SCALE_FACTOR = 1.75
-    STATS_RE_PAT = re.compile(r"""
-        .+TREATS
-        [\n\ ]+
-        (?P<victories>\d{1,4})           # victories
-        [\n\ ]+
-        ((?P<days>\d{1,3})d[\ ]?)?       # days
-        ((?P<hours>\d{1,2})h[\ ]?)?      # hours
-        ((?P<minutes>\d{1,2})m[\ ]?)?    # minutes
-        ((\d{1,2})s)?                    # seconds (very rare)
-        [\n\ ]+
-        (?P<treats>\d{1,4})              # treats
-        """, re.X|re.S)
-
-
-    def __init__(self, filename):
-        self.image = cv2.imread(filename)
-        self.h = self.image.shape[0]
-        self.w = self.image.shape[1]
-
-
-    def best_txt(self, img=None):
-        '''Pre-process image and extract text'''
-
-        if img is None:
-            img = self.image
-        
-        w1 = round(img.w * self.SCALE_FACTOR)
-        h1 = round(img.h * self.SCALE_FACTOR)
-        resized   = cv2.resize(img, (w1, h1))
-        grayscale = cv2.cvtColor(resized, cv2.COLOR_BGR2GRAY)
-        _, thresh = cv2.threshold(grayscale, 200, 230, cv2.THRESH_BINARY)
-
-        return pytesseract.image_to_string(thresh)
-
-
-    def get_title_txt(self):
-        '''Extract image title from predetermined crop'''
-
-        cropped = self.image[50:140, 0:self.w]
-        txt = self.best_txt(cropped)
-
-        # string clean up
-        txt = txt.replace("’", "'")
-        txt = txt.replace('\n', ' ')
-
-        return txt.strip().lower()
-
-
-    def get_stats_info(self):
-        '''Extract image stats from predetermined crop'''
-
-        cropped = self.image[975:1100, 0:self.w]
-        txt = self.best_txt(cropped)
-        txt = txt.replace('O', '0')   # string clean up
-
-        match = re.search(self.STATS_RE_PAT, txt)
-        if match == None:
-            return None
-        else:
-            return match.groupdict()
-
 
 #===============================SHEET CLASS===================================
 
@@ -168,6 +102,70 @@ class GoogleSheet:
             print('INFO - Sorting complete.\n')
 
 
+#===============================IMAGE CLASS===================================
+
+class ImageClass:
+    SCALE_FACTOR = 1.75
+    STATS_RE_PAT = re.compile(r"""
+        .+TREATS
+        [\n\ ]+
+        (?P<victories>\d{1,4})           # victories
+        [\n\ ]+
+        ((?P<days>\d{1,3})d[\ ]?)?       # days
+        ((?P<hours>\d{1,2})h[\ ]?)?      # hours
+        ((?P<minutes>\d{1,2})m[\ ]?)?    # minutes
+        ((\d{1,2})s)?                    # seconds (very rare)
+        [\n\ ]+
+        (?P<treats>\d{1,4})              # treats
+        """, re.X|re.S)
+
+
+    def __init__(self, filename):
+        self.image = cv2.imread(filename)
+
+
+    def best_txt(self, img=None):
+        '''Pre-process image and extract text'''
+
+        if img is None:
+            img = self.image
+        
+        h1 = round(img.shape[0] * self.SCALE_FACTOR)
+        w1 = round(img.shape[1] * self.SCALE_FACTOR)
+        resized   = cv2.resize(img, (w1, h1))
+        grayscale = cv2.cvtColor(resized, cv2.COLOR_BGR2GRAY)
+        _, thresh = cv2.threshold(grayscale, 200, 230, cv2.THRESH_BINARY)
+
+        return pytesseract.image_to_string(thresh)
+
+
+    def get_title_txt(self):
+        '''Extract image title from predetermined crop'''
+
+        cropped = self.image[50:140, 0:self.image.shape[1]]
+        txt = self.best_txt(cropped)
+
+        # string clean up
+        txt = txt.replace("’", "'")
+        txt = txt.replace('\n', ' ')
+
+        return txt.strip().lower()
+
+
+    def get_stats_info(self):
+        '''Extract image stats from predetermined crop'''
+
+        cropped = self.image[975:1100, 0:self.image.shape[1]]
+        txt = self.best_txt(cropped)
+        txt = txt.replace('O', '0')   # string clean up
+
+        match = re.search(self.STATS_RE_PAT, txt)
+        if match == None:
+            return None
+        else:
+            return match.groupdict()
+
+
 #================================GYM CLASS====================================
 
 class GymClass:
@@ -192,11 +190,12 @@ class GymClass:
         self.victories = int(d['victories'])
 
     def set_time_defended(self, d):
-        d = {k:0 if v is None else int(v) for k,v in d.items()}
+        subd = {k:d[k] for k in ['days','hours','minutes']}
+        subd = {k:0 if v is None else int(v) for k,v in subd.items()}
         
-        self.days    = d['days']
-        self.hours   = d['hours']
-        self.minutes = d['minutes']
+        self.days    = subd['days']
+        self.hours   = subd['hours']
+        self.minutes = subd['minutes']
         
         total = self.days + self.hours / 24 + self.minutes / 1440
         self.defended = round(total, 4)
@@ -350,7 +349,7 @@ def has_valid_environment():
     
     # check json key file exits
     KEYFILE = os.path.join(subdir, os.getenv("KEYFILE"))
-    if os.path.isfile(KEYFILE):
+    if not os.path.isfile(KEYFILE):
         ColorPrint(error_prompt.format(KEYFILE)).fail()
         return False
     
