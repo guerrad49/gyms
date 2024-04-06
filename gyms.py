@@ -25,9 +25,8 @@ from oauth2client.service_account import ServiceAccountCredentials as SAC
 
 #=============================GLOBAL VARIABLES================================
 
-VARIABLES = 'variables.env'
 DOWNLOADS = os.path.join(os.getenv('HOME'), 'Downloads')
-BADGES    = os.path.join(os.getcwd(), 'badges')
+BADGES    = os.path.join(os.path.dirname(__file__), 'badges')
 
 
 #===============================SHEET CLASS===================================
@@ -63,13 +62,13 @@ class GoogleSheet:
         print('INFO - Data extract successful.')
 
     
-    def partition(self):
+    def split(self):
         self.scanned      = self.df[self.df['image'] != '']
         self.not_scanned  = self.df[self.df['image'] == '']
         self.available_id = self.scanned['image'].max() + 1
 
     
-    def locate_by_name(self, title) -> int:
+    def find(self, title) -> int:
         matches = self.df[self.df['title'] == title]
         
         # check for duplicate titles
@@ -284,7 +283,7 @@ class Processor:
     
     def run_scanner(self):
         gs = GoogleSheet()
-        gs.partition()
+        gs.split()
 
         ColorPrint('\nINFO - Begin scanning process.\n').proc()
 
@@ -299,7 +298,7 @@ class Processor:
             else:
                 img_data.update(stats)
 
-            idx = gs.locate_by_name(img_data['title'])
+            idx = gs.find(img_data['title'])
             g = GymClass(idx, img_data, gs.df.at[idx,'coordinates'])
             sheet_row = g.describe()
             print(sheet_row)
@@ -338,24 +337,31 @@ class ColorPrint:
 #===============================FUNCTIONS=====================================
 
 def has_valid_environment():
-    subdir = os.path.join(os.getcwd(), 'subfiles')
+    subfiles = os.path.join(os.path.dirname(__file__), 'subfiles')
 
-    global KEYFILE, SHEET, AGENT
-    error_prompt = "error: could not locate '{}' file"
-    
     # load environment
-    env_path = os.path.join(subdir, VARIABLES)
+    env_path = os.path.join(subfiles, 'variables.env')
     load_dotenv(env_path)
     
+    global KEYFILE, SHEET, AGENT
+    
     # check json key file exits
-    KEYFILE = os.path.join(subdir, os.getenv("KEYFILE"))
+    KEYFILE = os.path.join(subfiles, os.getenv("KEYFILE"))
     if not os.path.isfile(KEYFILE):
-        ColorPrint(error_prompt.format(KEYFILE)).fail()
+        prompt = "error: could not locate '{}' file".format(KEYFILE)
+        ColorPrint(prompt).fail()
         return False
     
-    # set remainding environment values
-    SHEET = os.getenv("SHEET_NAME")
-    AGENT = os.getenv("EMAIL")
+    # check remainding env variables
+    prompt = "error: 'variables.env' not properly set"
+
+    if (SHEET := os.getenv("SHEET")) is "":
+        ColorPrint(prompt).fail()
+        return False
+    
+    if (AGENT := os.getenv("EMAIL")) is "":
+        ColorPrint(prompt).fail()
+        return False
 
     return True
 
