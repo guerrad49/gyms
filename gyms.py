@@ -363,10 +363,11 @@ class Processor:
         gs = GoogleSheet()
         gs.split()
         next_id = gs.scanned['image'].max() + 1
+        ids = range(next_id, next_id + len(self.queue))
 
         ColorPrint('\nINFO - Begin scanning process.\n').proc()
 
-        for path in self.queue:
+        for id, path in zip(ids, self.queue):
             img_data = dict()
             img = ImageClass(path)
             img_data['title'] = img.get_title_txt()
@@ -378,14 +379,13 @@ class Processor:
             coords = gs.df.at[ridx,'coordinates']
             if title_from_df != "":
                 img_data['title'] = title_from_df
-            g = GymClass(next_id, img_data, coords)
+            g = GymClass(id, img_data, coords)
 
             gym_row = get_formatted_row(vars(g))
-            print(gym_row)
-            # gs.write_row(ridx, gym_row)
-            # print()
+            gs.write_row(ridx, gym_row)
+            print()
 
-
+        gs.sort_by_location()
 
 #================================PRINT CLASS==================================
 
