@@ -1,32 +1,20 @@
-#!/usr/bin/env python3
-
 # standard libraries
 import os
 import re
 import sys
-import pdb        # debugger
 #import logging    # maintain logs
-import argparse
 from difflib import SequenceMatcher
 
 # third-party packages
-import gspread
+import cv2               # image reading
+import pytesseract       # packages for reading
 import numpy as np
 import pandas as pd
-from dotenv import load_dotenv    # load env vars
 
-import cv2
-import pytesseract       # packages for reading
-from PIL import Image    # and enhancing images
-
+import gspread
 from geopy.geocoders import Nominatim
 from oauth2client.service_account import ServiceAccountCredentials as SAC
 
-
-#=============================GLOBAL VARIABLES================================
-
-DOWNLOADS = os.path.join(os.getenv('HOME'), 'Downloads')
-BADGES    = os.path.join(os.path.dirname(__file__), 'badges')
 
 #===============================SHEET CLASS===================================
 
@@ -158,7 +146,7 @@ class GoogleSheet:
 
 #===============================IMAGE CLASS===================================
 
-class ImageClass:
+class Image:
     STATS_RE_PAT = re.compile(r"""
         .+TREATS
         [\n\ ]+
@@ -253,11 +241,11 @@ class ImageClass:
             return match.groupdict()
         
     
-    def to_storage(self, new_id):
-        """Move and rename file from downloads to badges folder"""
+    def to_storage(self, storage_dir, new_id):
+        """Move image file to storage with a new id"""
     
         new_name = 'IMG_{:04d}.PNG'.format(new_id)
-        new_path = os.path.join(BADGES, new_name)
+        new_path = os.path.join(storage_dir, new_name)
         os.rename(self.filepath, new_path)
         self.filepath = new_path
 
@@ -266,7 +254,7 @@ class ImageClass:
 
 #================================GYM CLASS====================================
 
-class GymClass:
+class Gym:
     LONG_TERM_DEFENDING = 100   # in days
 
     def __init__(self, img_id, data, loc):
@@ -343,62 +331,28 @@ class GymClass:
 
     def set_state(self):
         self.state = self.address['state'].lower()
-    
 
-#=============================PROCESSOR CLASS=================================
+    def format_vars(self):
+        """Construct formatted row"""
 
-class Processor:
-    def __init__(self, mode):        
-        self.mode = mode
-
-
-    def has_queue(self) -> bool:
-        """Returns True when successfully populated a queue to scan"""
-
-        self.queue = [
-            os.path.join(DOWNLOADS, x) for x in os.listdir(DOWNLOADS) \
-            if x.endswith('.PNG')
+        row = [
+            self.image, 
+            self.title, 
+            self.style, 
+            self.victories, 
+            self.days, 
+            self.hours, 
+            self.minutes, 
+            self.defended, 
+            self.treats, 
+            self.coordinates, 
+            self.city, 
+            self.county, 
+            self.state
             ]
 
-        if len(self.queue) == 0:
-            print('INFO - No images found.\n')
-            return False
-        
-        prompt  = 'INFO - Found the following images:\n'
-        prompt += '\n'.join(self.queue)
-        prompt += '\n'
-        print(prompt)
-        return True
+        return [row]
     
-    
-    def run_scanner(self):
-        gs = GoogleSheet()
-        gs.split()
-        next_id = gs.scanned['image'].max() + 1
-        ids = range(next_id, next_id + len(self.queue))
-
-        ColorPrint('\nINFO - Begin scanning process.\n').proc()
-
-        for id, path in zip(ids, self.queue):
-            img_data = dict()
-            img = ImageClass(path)
-            img_data['title'] = img.get_title_txt()
-            stats = img.get_stats_info()
-            img_data.update(stats)
-
-            ridx, title_from_df = gs.find(path, img_data['title'])
-
-            coords = gs.df.at[ridx,'coordinates']
-            if title_from_df != "":
-                img_data['title'] = title_from_df
-            g = GymClass(id, img_data, coords)
-
-            gym_row = get_formatted_row(vars(g))
-            img.to_storage(id)
-            gs.write_row(ridx, gym_row)
-            print()
-
-        gs.sort_by_location()
 
 #================================PRINT CLASS==================================
 
@@ -428,35 +382,6 @@ class ColorPrint:
 
 #===============================FUNCTIONS=====================================
 
-def has_valid_environment():
-    subfiles = os.path.join(os.path.dirname(__file__), 'subfiles')
-
-    # load environment
-    env_path = os.path.join(subfiles, 'variables.env')
-    load_dotenv(env_path)
-    
-    global KEYFILE, SHEET, AGENT
-    
-    # check json key file exits
-    KEYFILE = os.path.join(subfiles, os.getenv("KEYFILE"))
-    if not os.path.isfile(KEYFILE):
-        prompt = "error: could not locate '{}' file".format(KEYFILE)
-        ColorPrint(prompt).fail()
-        return False
-    
-    # check remainding env variables
-    prompt = "error: 'variables.env' not properly set"
-
-    if (SHEET := os.getenv("SHEET")) == "":
-        ColorPrint(prompt).fail()
-        return False
-    
-    if (AGENT := os.getenv("EMAIL")) == "":
-        ColorPrint(prompt).fail()
-        return False
-
-    return True
-
 
 def get_formatted_row(d):
     """Construct formatted row"""
@@ -473,35 +398,3 @@ def get_formatted_row(d):
         ]
 
     return [row]
-
-
-def parse_args():
-    command_desc = 'Scan badge data from PNG files.'
-    p = argparse.ArgumentParser(description=command_desc)
-
-    flags = p.add_mutually_exclusive_group()
-    flags.add_argument('-s', '--scan', action='store_true',
-        help='scan new badges')
-    flags.add_argument('-u', '--update', action='store_true',
-        help='update badge given')
-
-    args = p.parse_args()
-            
-    return args
-
-
-#==================================MAIN=======================================
-
-
-if __name__ == "__main__":
-    args = parse_args()
-
-    if not has_valid_environment():
-        sys.exit(0)
-    
-    p = Processor(args.scan)
-    if not p.has_queue():
-        ColorPrint('---Processor ended---\n').fail()
-        sys.exit(0)
-
-    p.run_scanner()
