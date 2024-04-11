@@ -27,23 +27,23 @@ class GoogleSheet:
             ]
     MIN_SIMILARITY = 0.9
     
-    def __init__(self):
-        self.establish_connetion()
-        self.set_data()
+    def __init__(self, key, sheetname):
+        self.establish_connetion(key)
+        self.set_data(sheetname)
 
 
-    def establish_connetion(self):
+    def establish_connetion(self, key):
         """Connect with google API"""
 
-        credentials = SAC.from_json_keyfile_name(KEYFILE, self.SCOPE)
+        credentials = SAC.from_json_keyfile_name(key, self.SCOPE)
         self.client = gspread.authorize(credentials)
         print('INFO - Connection to Google Drive successful.')
 
 
-    def set_data(self):
+    def set_data(self, sheetname):
         """Extract sheet as dataframe"""
 
-        self.sheet    = self.client.open(SHEET).sheet1
+        self.sheet    = self.client.open(sheetname).sheet1
         self.df       = pd.DataFrame(self.sheet.get_all_records())
         # data starts at sheet row 2
         self.df.index = np.arange(2, len(self.df) + 2)
@@ -257,14 +257,14 @@ class Image:
 class Gym:
     LONG_TERM_DEFENDING = 100   # in days
 
-    def __init__(self, img_id, data, loc):
+    def __init__(self, img_id, data, loc, email):
         self.image = int(img_id)
         self.set_title(data)
         self.set_victories(data)
         self.set_time_defended(data)
         self.set_treats(data)
         self.set_style()
-        self.set_address(loc)
+        self.set_address(loc, email)
         self.set_city()
         self.set_county()
         self.set_state()
@@ -295,9 +295,9 @@ class Gym:
         else:
             self.style = 'gold'
 
-    def set_address(self, coordinates):
+    def set_address(self, coordinates, agent):
         self.coordinates  = coordinates
-        geolocator        = Nominatim(user_agent=AGENT)   # required by ToS
+        geolocator        = Nominatim(user_agent=agent)   # required by ToS
         location          = geolocator.reverse(self.coordinates.split(','))
         self.address      = location.raw['address']
 

@@ -79,9 +79,8 @@ def parse_args():
             
     return args
 
+
 #==================================MAIN=======================================
-
-
 
 if __name__ == '__main__':
     args = parse_args()
@@ -94,7 +93,7 @@ if __name__ == '__main__':
         ColorPrint('---Processor ended---\n').fail()
         sys.exit(0)
 
-    gs = GoogleSheet()
+    gs = GoogleSheet(KEYFILE, SHEET)
     gs.split()
     next_id = gs.scanned['image'].max() + 1
     ids = range(next_id, next_id + len(queue))
@@ -113,10 +112,10 @@ if __name__ == '__main__':
         coords = gs.df.at[ridx,'coordinates']
         if title_from_df != "":
             img_data['title'] = title_from_df
-        g = Gym(id, img_data, coords)
+        g = Gym(id, img_data, coords, AGENT)
         gym_row = g.format_vars()
-
         img.to_storage(BADGES, id)
+
         gs.write_row(ridx, gym_row)
         print()
 
