@@ -7,7 +7,7 @@ import sys
 import pdb        # debugger
 #import logging    # maintain logs
 import argparse
-#from difflib import SequenceMatcher
+from difflib import SequenceMatcher
 
 # third-party packages
 import gspread
@@ -28,7 +28,6 @@ from oauth2client.service_account import ServiceAccountCredentials as SAC
 DOWNLOADS = os.path.join(os.getenv('HOME'), 'Downloads')
 BADGES    = os.path.join(os.path.dirname(__file__), 'badges')
 
-
 #===============================SHEET CLASS===================================
 
 class GoogleSheet:
@@ -38,6 +37,7 @@ class GoogleSheet:
             'https://www.googleapis.com/auth/drive.file',
             'https://www.googleapis.com/auth/drive'
             ]
+    MIN_SIMILARITY = 0.9
     
     def __init__(self):
         self.establish_connetion()
@@ -63,25 +63,80 @@ class GoogleSheet:
 
     
     def split(self):
-        self.scanned      = self.df[self.df['image'] != '']
-        self.not_scanned  = self.df[self.df['image'] == '']
-        self.available_id = self.scanned['image'].max() + 1
+        """Split main DataFrame between images scanned vs not"""
 
+        self.scanned     = self.df[self.df['image'] != '']
+        self.not_scanned = self.df[self.df['image'] == '']
     
-    def find(self, title) -> int:
-        matches = self.df[self.df['title'] == title]
+    
+    def find(self, img_name: str, title: str):
+        """
+        Locate index of a given title in the database
         
-        # check for duplicate titles
+        Parameters
+        ----------
+        img_name: str
+            The full name of image to locate
+        title: str
+            The title to locate
+
+        Returns
+        -------
+        tuple(row_idx, similar_title)
+        row_idx: int
+            The exact row location
+        similar_title: str
+            The true title in the database
+        """
+
+        similar_title = ""
+        matches = self.not_scanned[self.not_scanned['title'] == title]
+
+        # check similar titles when no exact match
+        if matches.shape[0] == 0:
+            matches = self.df[self.df['title']
+                    .apply(lambda x: self.is_similar(x, title))
+                    ]
+            similar_title = matches.iat[0,1]
+        
+        # check when multiple matches
         if matches.shape[0] > 1:
-            columns = ['title','coordinates','city','state']
-            prompt  = 'Duplicates found.\n'
-            prompt += matches[columns].to_string()
-            prompt += '\nEnter INDEX for {}:\t'.format(self.id)
-            ridx    = int(input(prompt))
+            columns  = ['title','coordinates','city','state']
+            prompt   = 'Duplicates found.\n'
+            prompt  += matches[columns].to_string()
+            prompt  += '\nEnter INDEX for {}:\t'.format(img_name)
+            row_idx  = int(input(prompt))
+            if row_idx not in matches.index:
+                ColorPrint('error: invalid index value given').fail()
+                sys.exit(0)
         else:
-            ridx = matches.index[0]
+            row_idx = matches.index[0]
         
-        return ridx
+        return (row_idx, similar_title)
+    
+
+    def is_similar(self, x: str, y: str) -> bool:
+        """Compute similarity percentage between two strings"""
+
+        # NOTE: For short strings, use may want to decrease MIN_SIMILARITY
+        likeness = SequenceMatcher(None, x, y).ratio()
+
+        if likeness >= self.MIN_SIMILARITY:
+            prompt = 'Found similar match \'{}\'. Accept? (y/n)\t'.format(x)
+            response = input(prompt)
+            if response == 'y':
+                return True
+            else:
+                return False
+
+        return False
+
+
+    def write_row(self, row_num, data):
+        old_row = 'A{0}:M{0}'.format(row_num)
+        self.sheet.update(old_row, data)
+        print('Writing to row {}'.format(row_num))
+        print(data)
 
 
     def sort_by_location(self):
@@ -104,7 +159,6 @@ class GoogleSheet:
 #===============================IMAGE CLASS===================================
 
 class ImageClass:
-    SCALE_FACTOR = 1.75
     STATS_RE_PAT = re.compile(r"""
         .+TREATS
         [\n\ ]+
@@ -121,16 +175,43 @@ class ImageClass:
 
     def __init__(self, filename):
         self.image = cv2.imread(filename)
+        self.set_params()
+
+    
+    def set_params(self):
+        dimensions = self.image.shape[:2]
+        
+        if dimensions == (1334, 750):   # iPhone SE
+            self.scale = 1.75
+            self.title_start = 50
+            self.title_end   = 140
+            self.stats_start = 975
+            self.stats_end   = 1100
+        elif dimensions == (1792, 828):   # iPhone 11
+            self.scale = 1.5
+            self.title_start = 60
+            self.title_end   = 150
+            self.stats_start = 1075
+            self.stats_end   = 1225
+        elif dimensions == (2556, 1179):   # iPhone 15
+            self.scale = 1
+            self.title_start = 110
+            self.title_end   = 210
+            self.stats_start = 1550
+            self.stats_end   = 1800
+        else:
+            ColorPrint('error - model unavailable').warning()
+            sys.exit()
 
 
-    def best_txt(self, img=None):
+    def best_txt(self, img=None) -> str:
         '''Pre-process image and extract text'''
 
         if img is None:
             img = self.image
         
-        h1 = round(img.shape[0] * self.SCALE_FACTOR)
-        w1 = round(img.shape[1] * self.SCALE_FACTOR)
+        h1 = round(img.shape[0] * self.scale)
+        w1 = round(img.shape[1] * self.scale)
         resized   = cv2.resize(img, (w1, h1))
         grayscale = cv2.cvtColor(resized, cv2.COLOR_BGR2GRAY)
         _, thresh = cv2.threshold(grayscale, 200, 230, cv2.THRESH_BINARY)
@@ -138,10 +219,13 @@ class ImageClass:
         return pytesseract.image_to_string(thresh)
 
 
-    def get_title_txt(self):
+    def get_title_txt(self) -> str:
         '''Extract image title from predetermined crop'''
 
-        cropped = self.image[50:140, 0:self.image.shape[1]]
+        cropped = self.image[
+            self.title_start:self.title_end, 
+            0:self.image.shape[1]
+            ]
         txt = self.best_txt(cropped)
 
         # string clean up
@@ -154,7 +238,10 @@ class ImageClass:
     def get_stats_info(self):
         '''Extract image stats from predetermined crop'''
 
-        cropped = self.image[975:1100, 0:self.image.shape[1]]
+        cropped = self.image[
+            self.stats_start:self.stats_end, 
+            0:self.image.shape[1]
+            ]
         txt = self.best_txt(cropped)
         txt = txt.replace('O', '0')   # string clean up
 
@@ -168,16 +255,16 @@ class ImageClass:
 #================================GYM CLASS====================================
 
 class GymClass:
-    STYLE_MIN = 100
+    LONG_TERM_DEFENDING = 100   # in days
 
-    def __init__(self, ridx, img_vals, coords):
-        self.ridx = ridx
-        self.set_title(img_vals)
-        self.set_victories(img_vals)
-        self.set_time_defended(img_vals)
-        self.set_treats(img_vals)
+    def __init__(self, img_id, data, loc):
+        self.image = int(img_id)
+        self.set_title(data)
+        self.set_victories(data)
+        self.set_time_defended(data)
+        self.set_treats(data)
         self.set_style()
-        self.set_address(coords)
+        self.set_address(loc)
         self.set_city()
         self.set_county()
         self.set_state()
@@ -203,16 +290,16 @@ class GymClass:
         self.treats = int(d['treats'])
 
     def set_style(self):
-        if self.days >= self.STYLE_MIN:
+        if self.days >= self.LONG_TERM_DEFENDING:
             self.style = '100+ days'
         else:
             self.style = 'gold'
 
     def set_address(self, coordinates):
-        coords       = coordinates.split(',')
-        geolocator   = Nominatim(user_agent=AGENT)   # required by ToS
-        location     = geolocator.reverse(coords)
-        self.address = location.raw['address']
+        self.coordinates  = coordinates
+        geolocator        = Nominatim(user_agent=AGENT)   # required by ToS
+        location          = geolocator.reverse(self.coordinates.split(','))
+        self.address      = location.raw['address']
 
     def set_city(self):
         city = None
@@ -244,25 +331,16 @@ class GymClass:
 
     def set_state(self):
         self.state = self.address['state'].lower()
-
-    def describe(self):
-        d = vars(self)
-        del d['address']
-        return d
     
 
 #=============================PROCESSOR CLASS=================================
 
 class Processor:
     def __init__(self, mode):        
-        if not self.has_queue_to_set():
-            ColorPrint('---Processor ended---\n').fail()
-            sys.exit(0)
-        
         self.mode = mode
 
 
-    def has_queue_to_set(self) -> bool:
+    def has_queue(self) -> bool:
         """Returns True when successfully populated a queue to scan"""
 
         self.queue = [
@@ -284,27 +362,28 @@ class Processor:
     def run_scanner(self):
         gs = GoogleSheet()
         gs.split()
+        next_id = gs.scanned['image'].max() + 1
 
         ColorPrint('\nINFO - Begin scanning process.\n').proc()
 
-        for file in self.queue:
+        for path in self.queue:
             img_data = dict()
-            img = ImageClass(file)
+            img = ImageClass(path)
             img_data['title'] = img.get_title_txt()
             stats = img.get_stats_info()
+            img_data.update(stats)
 
-            if stats is None:
-                pass
-            else:
-                img_data.update(stats)
+            ridx, title_from_df = gs.find(path, img_data['title'])
 
-            idx = gs.find(img_data['title'])
-            g = GymClass(idx, img_data, gs.df.at[idx,'coordinates'])
-            sheet_row = g.describe()
-            print(sheet_row)
-            print()
+            coords = gs.df.at[ridx,'coordinates']
+            if title_from_df != "":
+                img_data['title'] = title_from_df
+            g = GymClass(next_id, img_data, coords)
 
-
+            gym_row = get_formatted_row(vars(g))
+            print(gym_row)
+            # gs.write_row(ridx, gym_row)
+            # print()
 
 
 
@@ -355,15 +434,32 @@ def has_valid_environment():
     # check remainding env variables
     prompt = "error: 'variables.env' not properly set"
 
-    if (SHEET := os.getenv("SHEET")) is "":
+    if (SHEET := os.getenv("SHEET")) == "":
         ColorPrint(prompt).fail()
         return False
     
-    if (AGENT := os.getenv("EMAIL")) is "":
+    if (AGENT := os.getenv("EMAIL")) == "":
         ColorPrint(prompt).fail()
         return False
 
     return True
+
+
+def get_formatted_row(d):
+    """Construct formatted row"""
+
+    row = [
+        d['image'], 
+        d['title'], d['style'], 
+        d['victories'], 
+        d['days'], d['hours'], d['minutes'], 
+        d['defended'], 
+        d['treats'], 
+        d['coordinates'], 
+        d['city'], d['county'], d['state']
+        ]
+
+    return [row]
 
 
 def parse_args():
@@ -391,4 +487,8 @@ if __name__ == "__main__":
         sys.exit(0)
     
     p = Processor(args.scan)
+    if not p.has_queue():
+        ColorPrint('---Processor ended---\n').fail()
+        sys.exit(0)
+
     p.run_scanner()
