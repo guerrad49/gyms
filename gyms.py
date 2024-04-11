@@ -173,8 +173,9 @@ class ImageClass:
         """, re.X|re.S)
 
 
-    def __init__(self, filename):
-        self.image = cv2.imread(filename)
+    def __init__(self, filepath):
+        self.filepath = filepath
+        self.image    = cv2.imread(filepath)
         self.set_params()
 
     
@@ -250,6 +251,17 @@ class ImageClass:
             return None
         else:
             return match.groupdict()
+        
+    
+    def to_storage(self, new_id):
+        """Move and rename file from downloads to badges folder"""
+    
+        new_name = 'IMG_{:04d}.PNG'.format(new_id)
+        new_path = os.path.join(BADGES, new_name)
+        os.rename(self.filepath, new_path)
+        self.filepath = new_path
+
+        ColorPrint('INFO - Image successfully relocated.').proc()
 
 
 #================================GYM CLASS====================================
@@ -382,6 +394,7 @@ class Processor:
             g = GymClass(id, img_data, coords)
 
             gym_row = get_formatted_row(vars(g))
+            img.to_storage(id)
             gs.write_row(ridx, gym_row)
             print()
 
