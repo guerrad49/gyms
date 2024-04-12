@@ -105,7 +105,7 @@ if __name__ == '__main__':
     for id, path in zip(ids, queue):
         img_data = dict()
         img = Image(path)
-        img_data['title'] = img.get_title_txt()
+        img_data['title'] = img.get_title_text()
         stats = img.get_stats_info()
         img_data.update(stats)
 

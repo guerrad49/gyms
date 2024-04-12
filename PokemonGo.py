@@ -3,7 +3,7 @@ import os
 import re
 import sys
 #import logging    # maintain logs
-from typing import Tuple
+from typing import Tuple, Union
 from difflib import SequenceMatcher
 
 # third-party packages
@@ -176,17 +176,28 @@ class Image:
         (?P<treats>\d{1,4})              # treats
         """, re.X|re.S)
 
+    def __init__(self, path: str):
+        '''
+        Parameters
+        ----------
+        path:
+            The file path to the image
+        '''
 
-    def __init__(self, filepath):
-        self.filepath = filepath
-        self.image    = cv2.imread(filepath)
+        self.path  = path
+        self.image = cv2.imread(path)
         self.set_params()
 
     
     def set_params(self):
+        '''
+        Determine iPhone model parameters from image dimensions.
+        Cannot be used on unknown models.
+        '''
+
         dimensions = self.image.shape[:2]
         
-        if dimensions == (1334, 750):   # iPhone SE
+        if dimensions == (1334, 750):     # iPhone SE
             self.scale = 1.75
             self.title_start = 50
             self.title_end   = 140
@@ -209,61 +220,85 @@ class Image:
             sys.exit()
 
 
-    def best_txt(self, img=None) -> str:
-        '''Pre-process image and extract text'''
+    def get_text(self, image: np.ndarray = None) -> str:
+        '''
+        Parameters
+        ----------
+        image: 
+            The array representing an image
 
-        if img is None:
-            img = self.image
-        
-        h1 = round(img.shape[0] * self.scale)
-        w1 = round(img.shape[1] * self.scale)
-        resized   = cv2.resize(img, (w1, h1))
+        Returns
+        -------
+            The text string for entire image
+        '''
+
+        if image is None:
+            image = self.image
+
+        # pre-processing        
+        h1 = round(image.shape[0] * self.scale)
+        w1 = round(image.shape[1] * self.scale)
+        resized   = cv2.resize(image, (w1, h1))
         grayscale = cv2.cvtColor(resized, cv2.COLOR_BGR2GRAY)
         _, thresh = cv2.threshold(grayscale, 200, 230, cv2.THRESH_BINARY)
 
         return pytesseract.image_to_string(thresh)
 
 
-    def get_title_txt(self) -> str:
-        '''Extract image title from predetermined crop'''
+    def get_title_text(self) -> str:
+        '''
+        Extract image title from predetermined crop
+        
+        Returns
+        -------
+        The title string for badge image
+        '''
 
         cropped = self.image[
             self.title_start:self.title_end, 
             0:self.image.shape[1]
             ]
-        txt = self.best_txt(cropped)
+        text = self.get_text(cropped)
+        text = text.replace("’", "'")   # proactive error handling
+        text = text.replace('\n', ' ')
 
-        # string clean up
-        txt = txt.replace("’", "'")
-        txt = txt.replace('\n', ' ')
-
-        return txt.strip().lower()
+        return text.strip().lower()
 
 
-    def get_stats_info(self):
+    def get_stats_info(self) -> dict:
         '''Extract image stats from predetermined crop'''
 
         cropped = self.image[
             self.stats_start:self.stats_end, 
             0:self.image.shape[1]
             ]
-        txt = self.best_txt(cropped)
-        txt = txt.replace('O', '0')   # string clean up
+        txt = self.get_text(cropped)
+        txt = txt.replace('O', '0')   # proactive error handling
 
         match = re.search(self.STATS_RE_PAT, txt)
         if match == None:
-            return None
+            # TODO: Error handling
+            return dict()
         else:
             return match.groupdict()
         
     
-    def to_storage(self, storage_dir, new_id):
-        """Move image file to storage with a new id"""
+    def to_storage(self, directory: str, new_id: int):
+        """
+        Move image file to storage with a new id.
+
+        Parameters
+        ----------
+        directory:
+            The path to storage directory
+        new_id:
+            The new base id used in renaming image
+        """
     
         new_name = 'IMG_{:04d}.PNG'.format(new_id)
-        new_path = os.path.join(storage_dir, new_name)
-        os.rename(self.filepath, new_path)
-        self.filepath = new_path
+        new_path = os.path.join(directory, new_name)
+        os.rename(self.path, new_path)
+        self.path = new_path   # keep track of location
 
         ColorPrint('INFO - Image successfully relocated.').proc()
 
