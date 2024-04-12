@@ -3,6 +3,7 @@ import os
 import re
 import sys
 #import logging    # maintain logs
+from typing import Tuple
 from difflib import SequenceMatcher
 
 # third-party packages
@@ -25,74 +26,76 @@ class GoogleSheet:
             'https://www.googleapis.com/auth/drive.file',
             'https://www.googleapis.com/auth/drive'
             ]
-    MIN_SIMILARITY = 0.9
+    SIMILARITY_MIN = 0.9
     
-    def __init__(self, key, sheetname):
-        self.establish_connetion(key)
-        self.set_data(sheetname)
+    def __init__(self, key: str, sheetname: str):
+        '''
+        Parameters
+        ----------
+        key: 
+            The path to json key required for API access
+        sheetname: 
+            The name of Google Sheet with data
+        '''
+
+        self.key = key
+        self.sheetname = sheetname
 
 
-    def establish_connetion(self, key):
-        """Connect with google API"""
+    def establish_connection(self):
+        """Establish google API access"""
 
-        credentials = SAC.from_json_keyfile_name(key, self.SCOPE)
+        credentials = SAC.from_json_keyfile_name(self.key, self.SCOPE)
         self.client = gspread.authorize(credentials)
         print('INFO - Connection to Google Drive successful.')
 
 
-    def set_data(self, sheetname):
-        """Extract sheet as dataframe"""
+    def records_to_dataframes(self):
+        """Partition sheet records to category dataframes"""
 
-        self.sheet    = self.client.open(sheetname).sheet1
-        self.df       = pd.DataFrame(self.sheet.get_all_records())
-        # data starts at sheet row 2
-        self.df.index = np.arange(2, len(self.df) + 2)
+        self.sheet = self.client.open(self.sheetname).sheet1
+        df         = pd.DataFrame(self.sheet.get_all_records())
+        df.index   = np.arange(2, len(df) + 2)    # start at row 2
+
+        self.processed   = df[df['image'] != '']
+        self.unprocessed = df[df['image'] == '']
         print('INFO - Data extract successful.')
-
-    
-    def split(self):
-        """Split main DataFrame between images scanned vs not"""
-
-        self.scanned     = self.df[self.df['image'] != '']
-        self.not_scanned = self.df[self.df['image'] == '']
     
     
-    def find(self, img_name: str, title: str):
+    def find(self, title: str, df: pd.DataFrame) -> Tuple[str, int]:
         """
-        Locate index of a given title in the database
+        Locate given title within database.
         
         Parameters
         ----------
-        img_name: str
-            The full name of image to locate
-        title: str
+        title: 
             The title to locate
+        df:
+            The dataframe to search over
 
         Returns
         -------
-        tuple(row_idx, similar_title)
-        row_idx: int
-            The exact row location
-        similar_title: str
-            The true title in the database
+        title:
+            The true title in database
+        row_idx:
+            The row index for title match
         """
 
-        similar_title = ""
-        matches = self.not_scanned[self.not_scanned['title'] == title]
+        matches = df[df['title'] == title]
 
         # check similar titles when no exact match
         if matches.shape[0] == 0:
-            matches = self.df[self.df['title']
+            matches = df[df['title']
                     .apply(lambda x: self.is_similar(x, title))
                     ]
-            similar_title = matches.iat[0,1]
+            title = matches.iat[0,1]   # true title
         
         # check when multiple matches
         if matches.shape[0] > 1:
             columns  = ['title','coordinates','city','state']
             prompt   = 'Duplicates found.\n'
             prompt  += matches[columns].to_string()
-            prompt  += '\nEnter INDEX for {}:\t'.format(img_name)
+            prompt  += '\nEnter correct INDEX:\t'
             row_idx  = int(input(prompt))
             if row_idx not in matches.index:
                 ColorPrint('error: invalid index value given').fail()
@@ -100,19 +103,18 @@ class GoogleSheet:
         else:
             row_idx = matches.index[0]
         
-        return (row_idx, similar_title)
+        return title, row_idx
     
 
     def is_similar(self, x: str, y: str) -> bool:
         """Compute similarity percentage between two strings"""
 
-        # NOTE: For short strings, use may want to decrease MIN_SIMILARITY
+        # WARNING: For short strings, user may want to decrease SIMILARITY_MIN
         likeness = SequenceMatcher(None, x, y).ratio()
 
-        if likeness >= self.MIN_SIMILARITY:
+        if likeness >= self.SIMILARITY_MIN:
             prompt = 'Found similar match \'{}\'. Accept? (y/n)\t'.format(x)
-            response = input(prompt)
-            if response == 'y':
+            if input(prompt) == 'y':
                 return True
             else:
                 return False
@@ -120,21 +122,35 @@ class GoogleSheet:
         return False
 
 
-    def write_row(self, row_num, data):
+    def write_row(self, row_num: int, data: list):
+        '''
+        Fill sheet row with new data.
+        
+        Parameters
+        ----------
+        row_num:
+            The row number to write in google sheet
+        data:
+            The content values to write
+        '''
+
         old_row = 'A{0}:M{0}'.format(row_num)
         self.sheet.update(old_row, data)
+        
+        # sanity check
         print('Writing to row {}'.format(row_num))
         print(data)
 
 
     def sort_by_location(self):
-        prompt   = 'Ready to sort spreadsheet? (y/n)  '
-        response = input(prompt)
+        '''Optional sort of sheet contents geographically'''
 
-        if response == 'y':
-            by_city   = (8,'asc')
-            by_county = (9,'asc')
-            by_state  = (10,'asc')
+        prompt = 'Ready to sort spreadsheet? (y/n)  '
+
+        if input(prompt) == 'y':
+            by_city   = (11,'asc')
+            by_county = (12,'asc')
+            by_state  = (13,'asc')
             row_len = 'A2:J{}'.format(self.sheet.row_count)
 
             self.sheet.sort(

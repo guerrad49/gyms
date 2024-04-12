@@ -94,8 +94,10 @@ if __name__ == '__main__':
         sys.exit(0)
 
     gs = GoogleSheet(KEYFILE, SHEET)
-    gs.split()
-    next_id = gs.scanned['image'].max() + 1
+    gs.establish_connection()
+    gs.records_to_dataframes()
+
+    next_id = gs.processed['image'].max() + 1
     ids = range(next_id, next_id + len(queue))
 
     ColorPrint('\nINFO - Begin scanning process.\n').proc()
@@ -107,9 +109,9 @@ if __name__ == '__main__':
         stats = img.get_stats_info()
         img_data.update(stats)
 
-        ridx, title_from_df = gs.find(path, img_data['title'])
+        title_from_df, ridx = gs.find(img_data['title'], gs.unprocessed)
 
-        coords = gs.df.at[ridx,'coordinates']
+        coords = gs.unprocessed.at[ridx,'coordinates']
         if title_from_df != "":
             img_data['title'] = title_from_df
         g = Gym(id, img_data, coords, AGENT)
