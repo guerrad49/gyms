@@ -43,7 +43,7 @@ class GoogleSheet:
 
 
     def establish_connection(self):
-        """Establish google API access"""
+        '''Establish google API access'''
 
         credentials = SAC.from_json_keyfile_name(self.key, self.SCOPE)
         self.client = gspread.authorize(credentials)
@@ -51,7 +51,7 @@ class GoogleSheet:
 
 
     def records_to_dataframes(self):
-        """Partition sheet records to category dataframes"""
+        '''Partition sheet records to category dataframes'''
 
         self.sheet = self.client.open(self.sheetname).sheet1
         df         = pd.DataFrame(self.sheet.get_all_records())
@@ -63,7 +63,7 @@ class GoogleSheet:
     
     
     def find(self, title: str, df: pd.DataFrame) -> Tuple[str, int]:
-        """
+        '''
         Locate given title within database.
         
         Parameters
@@ -79,7 +79,7 @@ class GoogleSheet:
             The true title in database
         row_idx:
             The row index for title match
-        """
+        '''
 
         matches = df[df['title'] == title]
 
@@ -107,7 +107,7 @@ class GoogleSheet:
     
 
     def is_similar(self, x: str, y: str) -> bool:
-        """Compute similarity percentage between two strings"""
+        '''Compute similarity percentage between two strings'''
 
         # WARNING: For short strings, user may want to decrease SIMILARITY_MIN
         likeness = SequenceMatcher(None, x, y).ratio()
