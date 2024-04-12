@@ -77,7 +77,7 @@ class GoogleSheet:
         -------
         title:
             The true title in database
-        row_idx:
+        row_num:
             The row index for title match
         '''
 
@@ -96,14 +96,14 @@ class GoogleSheet:
             prompt   = 'Duplicates found.\n'
             prompt  += matches[columns].to_string()
             prompt  += '\nEnter correct INDEX:\t'
-            row_idx  = int(input(prompt))
-            if row_idx not in matches.index:
+            row_num  = int(input(prompt))
+            if row_num not in matches.index:
                 ColorPrint('error: invalid index value given').fail()
                 sys.exit(0)
         else:
-            row_idx = matches.index[0]
+            row_num = matches.index[0]
         
-        return title, row_idx
+        return title, row_num
     
 
     def is_similar(self, x: str, y: str) -> bool:
