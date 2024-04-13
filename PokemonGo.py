@@ -3,7 +3,7 @@ import os
 import re
 import sys
 #import logging    # maintain logs
-from typing import Tuple, Union
+from typing import Tuple
 from difflib import SequenceMatcher
 
 # third-party packages
@@ -20,6 +20,8 @@ from oauth2client.service_account import ServiceAccountCredentials as SAC
 #===============================SHEET CLASS===================================
 
 class GoogleSheet:
+    '''A class for handling reading/writing to a google sheet'''
+    
     SCOPE = [
             'https://spreadsheets.google.com/feeds',
             'https://www.googleapis.com/auth/spreadsheets',
@@ -135,7 +137,7 @@ class GoogleSheet:
         '''
 
         old_row = 'A{0}:M{0}'.format(row_num)
-        self.sheet.update(old_row, data)
+        self.sheet.update(old_row, [data])
         
         # sanity check
         print('Writing to row {}'.format(row_num))
@@ -163,6 +165,8 @@ class GoogleSheet:
 #===============================IMAGE CLASS===================================
 
 class Image:
+    '''A class for text-reading a PNG image'''
+    
     STATS_RE_PAT = re.compile(r"""
         .+TREATS
         [\n\ ]+
@@ -306,27 +310,49 @@ class Image:
 #================================GYM CLASS====================================
 
 class Gym:
+    '''A container to manage all gym-related fields'''
+    
     LONG_TERM_DEFENDING = 100   # in days
 
-    def __init__(self, img_id, data, loc, email):
-        self.image = int(img_id)
+    def __init__(self, image_id: int):
+        '''
+        Parameters
+        ----------
+        image_id:
+            The value identifying a gym with an image
+        '''
+        self.image = image_id
+    
+
+    def set_fields_from_image(self, data: dict):
+        '''
+        Helper method to set multiple gym fields.
+
+        Parameters
+        ----------
+        data:
+            The gym values extracted from image text
+        '''
+
         self.set_title(data)
         self.set_victories(data)
         self.set_time_defended(data)
         self.set_treats(data)
         self.set_style()
-        self.set_address(loc, email)
-        self.set_city()
-        self.set_county()
-        self.set_state()
 
-    def set_title(self, d):
+
+    def set_title(self, d: dict):
         self.title = d['title']
 
-    def set_victories(self, d):
+
+    def set_victories(self, d: dict):
         self.victories = int(d['victories'])
 
-    def set_time_defended(self, d):
+
+    def set_time_defended(self, d: dict):
+        '''Compute total time defended from time components'''
+
+        # create formatted subset of dictionary
         subd = {k:d[k] for k in ['days','hours','minutes']}
         subd = {k:0 if v is None else int(v) for k,v in subd.items()}
         
@@ -337,20 +363,46 @@ class Gym:
         total = self.days + self.hours / 24 + self.minutes / 1440
         self.defended = round(total, 4)
 
-    def set_treats(self, d):
+
+    def set_treats(self, d: dict):
         self.treats = int(d['treats'])
 
+
     def set_style(self):
+        '''Determine style depending on time defended'''
+
         if self.days >= self.LONG_TERM_DEFENDING:
             self.style = '100+ days'
         else:
             self.style = 'gold'
 
-    def set_address(self, coordinates, agent):
+
+    def set_location_fields(self, coordinates: str, email: str):
+        '''Helper method to set all gym location fields'''
+        
+        self.set_address(coordinates, email)
+        self.set_city()
+        self.set_county()
+        self.set_state()
+
+
+    def set_address(self, coordinates: str, user: str):
+        '''
+        Set address dictionary using third party library.
+
+        Parameters
+        ----------
+        coordinates:
+            The known coordinates with `lat,long` format
+        email:
+            The user's email required by third party ToS
+        '''
+
         self.coordinates  = coordinates
-        geolocator        = Nominatim(user_agent=agent)   # required by ToS
+        geolocator        = Nominatim(user_agent=user)
         location          = geolocator.reverse(self.coordinates.split(','))
-        self.address      = location.raw['address']
+        self.address      = location.raw['address']   # dictionary
+
 
     def set_city(self):
         city = None
@@ -369,6 +421,7 @@ class Gym:
         
         self.city = city.lower()
 
+
     def set_county(self):
         try:
             county = self.address['county']
@@ -380,34 +433,35 @@ class Gym:
 
         self.county = county.lower()
 
+
     def set_state(self):
         self.state = self.address['state'].lower()
 
-    def format_vars(self):
-        """Construct formatted row"""
 
-        row = [
-            self.image, 
-            self.title, 
-            self.style, 
-            self.victories, 
-            self.days, 
-            self.hours, 
-            self.minutes, 
-            self.defended, 
-            self.treats, 
-            self.coordinates, 
-            self.city, 
-            self.county, 
-            self.state
+    def format_fields(self) -> list:
+        '''
+        Construct custom list of attributes.
+        
+        Returns
+        -------
+        fields:
+            The object's attribute values reorganized
+        '''
+
+        fields = [
+            v for k,v in vars(self).items() 
+            if k not in ['style', 'address']
             ]
+        fields.insert(2, self.style)
 
-        return [row]
+        return fields
     
 
 #================================PRINT CLASS==================================
 
 class ColorPrint:
+    '''A class for simplifying the inclusion of color to print()'''
+    
     OKCYAN    = '\033[96m'
     WARNING   = '\033[93m'
     OKGREEN   = '\033[92m'
@@ -429,23 +483,3 @@ class ColorPrint:
 
     def fail(self):
         print('{}{}{}{}'.format(self.FAIL, self.BOLD, self.msg, self.ENDC))
-
-
-#===============================FUNCTIONS=====================================
-
-
-def get_formatted_row(d):
-    """Construct formatted row"""
-
-    row = [
-        d['image'], 
-        d['title'], d['style'], 
-        d['victories'], 
-        d['days'], d['hours'], d['minutes'], 
-        d['defended'], 
-        d['treats'], 
-        d['coordinates'], 
-        d['city'], d['county'], d['state']
-        ]
-
-    return [row]
