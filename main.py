@@ -114,8 +114,11 @@ if __name__ == '__main__':
         coords = gs.unprocessed.at[ridx,'coordinates']
         if title_from_df != "":
             img_data['title'] = title_from_df
-        g = Gym(id, img_data, coords, AGENT)
-        gym_row = g.format_vars()
+        g = Gym(id)
+        g.set_fields_from_image(img_data)
+        g.set_location_fields(coords, AGENT)
+
+        gym_row = g.format_fields()
         img.to_storage(BADGES, id)
 
         gs.write_row(ridx, gym_row)
