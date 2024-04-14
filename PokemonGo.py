@@ -153,7 +153,7 @@ class GoogleSheet:
             by_city   = (11,'asc')
             by_county = (12,'asc')
             by_state  = (13,'asc')
-            row_len = 'A2:J{}'.format(self.sheet.row_count)
+            row_len = 'A2:M{}'.format(self.sheet.row_count)
 
             self.sheet.sort(
                 by_state, by_county, by_city, 
@@ -240,9 +240,9 @@ class Image:
             image = self.image
 
         # pre-processing        
-        h1 = round(image.shape[0] * self.scale)
-        w1 = round(image.shape[1] * self.scale)
-        resized   = cv2.resize(image, (w1, h1))
+        height = round(image.shape[0] * self.scale)
+        width  = round(image.shape[1] * self.scale)
+        resized   = cv2.resize(image, (width, height))
         grayscale = cv2.cvtColor(resized, cv2.COLOR_BGR2GRAY)
         _, thresh = cv2.threshold(grayscale, 200, 230, cv2.THRESH_BINARY)
 
@@ -414,11 +414,9 @@ class Gym:
                 break
             except KeyError:
                 pass
- 
-        if city is None:
-            # city = self.log_error('City')
-            city = ''
         
+        # TODO: error handling
+
         self.city = city.lower()
 
 
@@ -426,7 +424,7 @@ class Gym:
         try:
             county = self.address['county']
         except KeyError:
-            # county = self.log_error('County')
+            # TODO: error handling
             county = ''
         else:
             county = re.search('.*(?= County)', county).group(0)
