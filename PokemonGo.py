@@ -3,7 +3,6 @@ import os
 import re
 import sys
 #import logging    # maintain logs
-from typing import Tuple
 from difflib import SequenceMatcher
 
 # third-party packages
@@ -64,7 +63,7 @@ class GoogleSheet:
         print('INFO - Data extract successful.')
     
     
-    def find(self, title: str, df: pd.DataFrame) -> Tuple[str, int]:
+    def find(self, title: str, df: pd.DataFrame) -> tuple[str, int]:
         '''
         Locate given title within database.
         
@@ -101,7 +100,7 @@ class GoogleSheet:
             row_num  = int(input(prompt))
             if row_num not in matches.index:
                 ColorPrint('error: invalid index value given').fail()
-                sys.exit(0)
+                sys.exit()
         else:
             row_num = matches.index[0]
         
@@ -249,13 +248,13 @@ class Image:
         return pytesseract.image_to_string(thresh)
 
 
-    def get_title_text(self) -> str:
+    def get_title(self) -> dict:
         '''
         Extract image title from predetermined crop
         
         Returns
         -------
-        The title string for badge image
+        The dict containing the title for badge image
         '''
 
         cropped = self.image[
@@ -266,11 +265,17 @@ class Image:
         text = text.replace("’", "'")   # proactive error handling
         text = text.replace('\n', ' ')
 
-        return text.strip().lower()
+        return {'title': text.strip().lower()}
 
 
-    def get_stats_info(self) -> dict:
-        '''Extract image stats from predetermined crop'''
+    def get_stats(self) -> dict:
+        '''
+        Extract image stats from predetermined crop
+        
+        Returns
+        -------
+        The dict containing the stats for badge image
+        '''
 
         cropped = self.image[
             self.stats_start:self.stats_end, 
@@ -302,7 +307,7 @@ class Image:
         new_name = 'IMG_{:04d}.PNG'.format(new_id)
         new_path = os.path.join(directory, new_name)
         os.rename(self.path, new_path)
-        self.path = new_path   # keep track of location
+        self.path = new_path   # update image location
 
         ColorPrint('INFO - Image successfully relocated.').proc()
 
