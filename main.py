@@ -86,12 +86,12 @@ if __name__ == '__main__':
     args = parse_args()
 
     if not has_valid_environment():
-        sys.exit(0)
+        sys.exit()
     
     queue = get_queue()
     if len(queue) == 0:
         ColorPrint('---Processor ended---\n').fail()
-        sys.exit(0)
+        sys.exit()
 
     gs = GoogleSheet(KEYFILE, SHEET)
     gs.establish_connection()
@@ -103,17 +103,14 @@ if __name__ == '__main__':
     ColorPrint('\nINFO - Begin scanning process.\n').proc()
 
     for id, path in zip(ids, queue):
-        img_data = dict()
         img = Image(path)
-        img_data['title'] = img.get_title_text()
-        stats = img.get_stats_info()
-        img_data.update(stats)
+        img_data = img.get_title() | img.get_stats()   # python3.9+
 
         title_from_df, ridx = gs.find(img_data['title'], gs.unprocessed)
+        img_data['title'] = title_from_df
 
-        coords = gs.unprocessed.at[ridx,'coordinates']
-        if title_from_df != "":
-            img_data['title'] = title_from_df
+        coords = gs.unprocessed.at[ridx,'coordinates']            
+
         g = Gym(id)
         g.set_fields_from_image(img_data)
         g.set_location_fields(coords, AGENT)
