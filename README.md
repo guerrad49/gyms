@@ -7,24 +7,15 @@ The following script is designed to aid PokemonGo players in keeping and updatin
 ***
 
 ## Pre-Requisites
-After cloning this repo locally, there are several tasks to complete before running the script.
+After cloning this repo locally, there are tasks to complete before running the script.
 
-##### 1. Badges
-Create a directory where you will store all your screenshots of gyms to a path of your chosing. The path you chose will not affect performance.
+##### 1. SetUp
+Run the executable `setup.sh` which will
+* Create a **badges** directory and
 
-##### 2. Variables
-Make sure the name of `subfiles/variables_template.txt` and the value of **VARS_FILE** in `gyms.py (line 28)` match. For the remainding of this README, we'll assume both have the name `variables.txt`.
+* Create a virtual environment with all the required libraries.
 
-##### 3. Environment
-Use the command line to create a virtual environment and install requirements.
-```
-   $ python3 -m venv <name_of_your_venv>
-   $ source <name_of_your_venv>/bin/activate
-   $ pip install -r requirements.txt
-   $ deactivate
-```
-
-##### 4. Google Sheet
+##### 2. Google Sheet
 This is arguably the most tedious step.
 * The user must create a Google Sheet with the following headers:
     
@@ -34,15 +25,14 @@ This is arguably the most tedious step.
 
 * Follow the process outlined for [GSPREAD](https://docs.gspread.org/en/latest/oauth2.html) in order to enable API Access to your Google Sheet. After understanding and completing the process, the created json file should be saved in the `subfiles` directory.
 
-#### 5. Update Variables
-Open `subfiles/variables.txt` and update all five values. <br>
-*Note: You can choose a custom folder for **DOWNLOADS_PATH**. Files are only stored here until they are processed and relocated.*
+#### 3. Update Variables
+Open `subfiles/variables.env` and update each value. <br>
 
 ***
 
 ## The Process
 
-Each image is scanned from **DOWNLOADS_PATH** and to extracts fields to populate the user's Google Sheet. During each iteration, if reading errors occur, the user is prompted to manually type specified values. Then, the appropriate row is updated and a local file `subfiles/log` is updated. Each image is relocated to **BADGES_PATH** using the naming convention `IMG_####.PNG`. Lastly, the user is given the option to sort their Google Sheet.
+Each image is scanned from **DOWNLOADS** and to extracts fields to populate the user's Google Sheet. During each iteration, if reading errors occur, the user is prompted to manually type specified values. Then, the appropriate row is updated and a local file `subfiles/log` is updated. Each image is relocated to **BADGES** using the naming convention `IMG_####.PNG`. Lastly, the user is given the option to sort their Google Sheet.
 
 ***
 
