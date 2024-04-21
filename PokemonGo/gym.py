@@ -78,7 +78,7 @@ class Gym:
         self.set_state()
 
 
-    def set_address(self, coordinates: str, user: str):
+    def set_address(self, coordinates: str, email: str):
         '''
         Set address dictionary using third party library.
 
@@ -91,7 +91,7 @@ class Gym:
         '''
 
         self.coordinates  = coordinates
-        geolocator        = Nominatim(user_agent=user)
+        geolocator        = Nominatim(user_agent=email)
         location          = geolocator.reverse(self.coordinates.split(','))
         self.address      = location.raw['address']   # dictionary
 
@@ -106,7 +106,7 @@ class Gym:
         
         # manually enter city name
         if city is None:
-            prompt = 'Enter the CITY for `{}`:\t'.format(self.coordinates)
+            prompt = 'Enter CITY for `{}`:\t'.format(self.coordinates)
             city   = input(prompt).strip()
 
         self.city = city.lower()
@@ -117,7 +117,7 @@ class Gym:
             county = self.address['county']
         except KeyError:
             # manually enter county name
-            prompt = 'Enter the COUNTY for `{}`:\t'.format(self.coordinates)
+            prompt = 'Enter COUNTY for `{}`:\t'.format(self.coordinates)
             county = input(prompt).strip()
         
         county = county.lower()
