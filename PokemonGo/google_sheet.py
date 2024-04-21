@@ -4,6 +4,7 @@ import pandas as pd
 from oauth2client.service_account import ServiceAccountCredentials as SAC
 
 from .utils import are_similar
+from .exceptions import InputError
 
 
 class GoogleSheet:
@@ -86,7 +87,7 @@ class GoogleSheet:
             prompt  += '\nEnter correct INDEX:\t'
             row_num  = int(input(prompt))
             if row_num not in matches.index:
-                raise IndexError('choices index out of range')
+                raise InputError
         else:
             row_num = matches.index[0]
         
