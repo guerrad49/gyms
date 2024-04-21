@@ -1,14 +1,15 @@
-# standard libraries
 import os
 import re
 
-# third-party
 import cv2
 import numpy as np
 import pytesseract
 
 
 class UnknownModelError(Exception):
+    pass
+
+class InputError(Exception):
     pass
 
 
@@ -19,9 +20,7 @@ class Image:
     i11_DIMENSIONS = (1792, 828)
     i15_DIMENSIONS = (2556, 1179)
 
-    STATS_RE_PAT = re.compile(r"""
-        .+TREATS
-        [\n\ ]+
+    STATS_PATTERN = re.compile(r"""
         (?P<victories>\d{1,4})           # victories
         [\n\ ]+
         ((?P<days>\d{1,3})d[\ ]?)?       # days
@@ -138,12 +137,16 @@ class Image:
         txt = self.get_text(cropped)
         txt = txt.replace('O', '0')   # proactive error handling
 
-        match = re.search(self.STATS_RE_PAT, txt)
-        if match == None:
-            # TODO: Error handling
-            return dict()
-        else:
-            return match.groupdict()
+        match = re.search(self.STATS_PATTERN, txt)
+        if match is None:
+            # manually enter image stats
+            prompt  = 'Enter STATS for `{}`:\t'.format(self.path)
+            new_txt = input(prompt).strip()
+            match   = re.search(self.STATS_PATTERN, new_txt)
+            if match is None:
+                raise InputError('invalid input given for stats')
+        
+        return match.groupdict()
         
     
     def to_storage(self, directory: str, new_id: int):
