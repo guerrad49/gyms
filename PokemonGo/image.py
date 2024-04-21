@@ -160,5 +160,4 @@ class Image:
         os.rename(self.path, new_path)
         self.path = new_path   # update image location
 
-        # TODO: had access to ColorPrint.proc()
         print('INFO - Image successfully relocated.')
