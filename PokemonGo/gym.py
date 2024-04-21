@@ -1,11 +1,12 @@
 from geopy.geocoders import Nominatim
 
 
+LONG_TERM_DEFENDING = 100   # in days
+
+
 class Gym:
     '''A container to manage all gym-related fields'''
     
-    LONG_TERM_DEFENDING = 100   # in days
-
     def __init__(self, image_id: int):
         '''
         Parameters
@@ -63,7 +64,7 @@ class Gym:
     def set_style(self):
         '''Determine style depending on time defended'''
 
-        if self.days >= self.LONG_TERM_DEFENDING:
+        if self.days >= LONG_TERM_DEFENDING:
             self.style = '100+ days'
         else:
             self.style = 'gold'

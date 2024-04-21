@@ -7,15 +7,16 @@ from .utils import are_similar
 from .exceptions import InputError
 
 
-class GoogleSheet:
-    '''A class for handling reading/writing to a google sheet'''
-    
-    SCOPE = [
+SCOPE = [
             'https://spreadsheets.google.com/feeds',
             'https://www.googleapis.com/auth/spreadsheets',
             'https://www.googleapis.com/auth/drive.file',
             'https://www.googleapis.com/auth/drive'
             ]
+
+
+class GoogleSheet:
+    '''A class for handling reading/writing to a google sheet'''
     
     def __init__(self, key: str, sheetname: str):
         '''
@@ -34,7 +35,7 @@ class GoogleSheet:
     def establish_connection(self):
         '''Establish google API access'''
 
-        credentials = SAC.from_json_keyfile_name(self.key, self.SCOPE)
+        credentials = SAC.from_json_keyfile_name(self.key, SCOPE)
         self.client = gspread.authorize(credentials)
         print('INFO - Connection to Google Drive successful.')
 
