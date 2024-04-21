@@ -1,4 +1,3 @@
-# third-party
 from geopy.geocoders import Nominatim
 
 
@@ -100,15 +99,15 @@ class Gym:
     def set_city(self):
         city = None
 
-        # most commonly observed options
+        # most common options
         for option in ['city','town','village','township']:
-            try:
+            if option in self.address.keys():
                 city = self.address[option]
-                break
-            except KeyError:
-                pass
         
-        # TODO: error handling
+        # manually enter city name
+        if city is None:
+            prompt = 'Enter the CITY for `{}`:\t'.format(self.coordinates)
+            city   = input(prompt).strip()
 
         self.city = city.lower()
 
@@ -117,12 +116,12 @@ class Gym:
         try:
             county = self.address['county']
         except KeyError:
-            # TODO: error handling
-            county = ''
-        else:
-            county = re.search('.*(?= County)', county).group(0)
-
-        self.county = county.lower()
+            # manually enter county name
+            prompt = 'Enter the COUNTY for `{}`:\t'.format(self.coordinates)
+            county = input(prompt).strip()
+        
+        county = county.lower()
+        self.county = county.removesuffix(' county')
 
 
     def set_state(self):
