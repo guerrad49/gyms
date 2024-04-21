@@ -1,9 +1,9 @@
-from difflib import SequenceMatcher
-
 import gspread
 import numpy as np
 import pandas as pd
 from oauth2client.service_account import ServiceAccountCredentials as SAC
+
+from .utils import are_similar
 
 
 class GoogleSheet:
@@ -15,7 +15,6 @@ class GoogleSheet:
             'https://www.googleapis.com/auth/drive.file',
             'https://www.googleapis.com/auth/drive'
             ]
-    SIMILARITY_MIN = 0.9
     
     def __init__(self, key: str, sheetname: str):
         '''
@@ -75,7 +74,7 @@ class GoogleSheet:
         # check similar titles when no exact match
         if matches.shape[0] == 0:
             matches = df[df['title']
-                    .apply(lambda x: self.is_similar(x, title))
+                    .apply(lambda x: are_similar(x, title))
                     ]
             title = matches.iat[0,1]   # true title
         
@@ -92,22 +91,6 @@ class GoogleSheet:
             row_num = matches.index[0]
         
         return title, row_num
-    
-
-    def is_similar(self, x: str, y: str) -> bool:
-        '''Compute similarity percentage between two strings'''
-
-        # WARNING: For short strings, user may want to decrease SIMILARITY_MIN
-        likeness = SequenceMatcher(None, x, y).ratio()
-
-        if likeness >= self.SIMILARITY_MIN:
-            prompt = 'Found similar match \'{}\'. Accept? (y/n)\t'.format(x)
-            if input(prompt) == 'y':
-                return True
-            else:
-                return False
-
-        return False
 
 
     def write_row(self, row_num: int, data: list):
