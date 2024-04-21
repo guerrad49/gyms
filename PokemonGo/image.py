@@ -37,10 +37,10 @@ class Image:
 
         self.path  = path
         self.image = cv2.imread(path)
-        self.set_params()
+        self.set_processing_params()
 
     
-    def set_params(self):
+    def set_processing_params(self):
         '''
         Determine iPhone model parameters from image dimensions.
         Cannot be used on unknown models.
