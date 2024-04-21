@@ -1,7 +1,5 @@
-# standar libraries
 from difflib import SequenceMatcher
 
-# third-party
 import gspread
 import numpy as np
 import pandas as pd
@@ -127,7 +125,7 @@ class GoogleSheet:
         old_row = 'A{0}:M{0}'.format(row_num)
         self.sheet.update(old_row, [data])
         
-        # sanity check
+        # show what's being written
         print('Writing to row {}'.format(row_num))
         print(data)
 
@@ -135,16 +133,21 @@ class GoogleSheet:
     def sort_by_location(self):
         '''Optional sort of sheet contents geographically'''
 
-        prompt = 'Ready to sort spreadsheet? (y/n)  '
+        prompt = 'Ready to sort spreadsheet? (y/n)\t'
+        if input(prompt) != 'y':
+            return None
+        
+        cols = self.sheet.row_values(1)   # column titles
 
-        if input(prompt) == 'y':
-            by_city   = (11,'asc')
-            by_county = (12,'asc')
-            by_state  = (13,'asc')
-            row_len = 'A2:M{}'.format(self.sheet.row_count)
+        # adjust col num by 1 since row values have no title
+        by_city   = (cols.index('city') + 1, 'asc')
+        by_county = (cols.index('county') + 1, 'asc')
+        by_state  = (cols.index('state') + 1, 'asc')
+        
+        row_len = 'A2:M{}'.format(self.sheet.row_count)
 
-            self.sheet.sort(
-                by_state, by_county, by_city, 
-                range=row_len
-                )
-            print('INFO - Sorting complete.\n')
+        self.sheet.sort(
+            by_state, by_county, by_city, 
+            range=row_len
+            )
+        print('INFO - Sorting complete.\n')
