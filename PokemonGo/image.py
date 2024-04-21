@@ -1,7 +1,6 @@
 # standard libraries
 import os
 import re
-import sys
 
 # third-party
 import cv2
@@ -9,9 +8,17 @@ import numpy as np
 import pytesseract
 
 
+class UnknownModelError(Exception):
+    pass
+
+
 class Image:
     '''A class for text-reading a PNG image'''
     
+    iSE_DIMENSIONS = (1334, 750)
+    i11_DIMENSIONS = (1792, 828)
+    i15_DIMENSIONS = (2556, 1179)
+
     STATS_RE_PAT = re.compile(r"""
         .+TREATS
         [\n\ ]+
@@ -46,28 +53,28 @@ class Image:
 
         dimensions = self.image.shape[:2]
         
-        if dimensions == (1334, 750):     # iPhone SE
+        if dimensions == self.iSE_DIMENSIONS:
             self.scale = 1.75
             self.title_start = 50
             self.title_end   = 140
             self.stats_start = 975
             self.stats_end   = 1100
-        elif dimensions == (1792, 828):   # iPhone 11
+        elif dimensions == self.i11_DIMENSIONS:
             self.scale = 1.5
             self.title_start = 60
             self.title_end   = 150
             self.stats_start = 1075
             self.stats_end   = 1225
-        elif dimensions == (2556, 1179):   # iPhone 15
+        elif dimensions == self.i15_DIMENSIONS:
             self.scale = 1
             self.title_start = 110
             self.title_end   = 210
             self.stats_start = 1550
             self.stats_end   = 1800
         else:
-            # TODO: had access to ColorPrint
-            print('error - model unavailable')
-            sys.exit()
+            raise UnknownModelError(
+                'phone model undetermined from image dimensions'
+                )
 
 
     def get_text(self, image: np.ndarray = None) -> str:

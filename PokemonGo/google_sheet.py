@@ -1,5 +1,4 @@
 # standar libraries
-import sys
 from difflib import SequenceMatcher
 
 # third-party
@@ -90,9 +89,7 @@ class GoogleSheet:
             prompt  += '\nEnter correct INDEX:\t'
             row_num  = int(input(prompt))
             if row_num not in matches.index:
-                # TODO: had access to ColorPrint
-                print('error: invalid index value given')
-                sys.exit()
+                raise IndexError('choices index out of range')
         else:
             row_num = matches.index[0]
         
