@@ -6,3 +6,4 @@ opencv-python==4.7.0.68
 pandas==1.5.3
 pytesseract==0.3.10
 python-dotenv==1.0.1
+pytest==8.1.1
