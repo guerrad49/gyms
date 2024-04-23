@@ -1,18 +1,9 @@
 import gspread
 import numpy as np
 import pandas as pd
-from oauth2client.service_account import ServiceAccountCredentials as SAC
 
 from .utils import are_similar
 from .exceptions import InputError
-
-
-SCOPE = [
-            'https://spreadsheets.google.com/feeds',
-            'https://www.googleapis.com/auth/spreadsheets',
-            'https://www.googleapis.com/auth/drive.file',
-            'https://www.googleapis.com/auth/drive'
-            ]
 
 
 class GoogleSheet:
@@ -32,18 +23,11 @@ class GoogleSheet:
         self.sheetname = sheetname
 
 
-    def establish_connection(self):
-        '''Establish google API access'''
-
-        credentials = SAC.from_json_keyfile_name(self.key, SCOPE)
-        self.client = gspread.authorize(credentials)
-        print('INFO - Connection to Google Drive successful.')
-
-
-    def records_to_dataframes(self):
+    def retrieve_data(self):
         '''Partition sheet records to category dataframes'''
 
-        self.sheet = self.client.open(self.sheetname).sheet1
+        self.gc    = gspread.service_account(self.key)
+        self.sheet = self.gc.open(self.sheetname).sheet1
         df         = pd.DataFrame(self.sheet.get_all_records())
         df.index   = np.arange(2, len(df) + 2)    # start at row 2
 
