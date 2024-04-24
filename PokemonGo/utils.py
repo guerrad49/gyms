@@ -1,7 +1,7 @@
 import os
 from difflib import SequenceMatcher
 
-from dotenv import load_dotenv    # load env vars
+from dotenv import dotenv_values
 
 from .exceptions import InvalidEnvironment
 
@@ -28,27 +28,28 @@ def are_similar(x: str, y: str) -> bool:
 
 
 def load_env():
-    subfiles = os.path.join(os.environ['APP'], 'subfiles')
+    # get top level directory for package
+    pkg_dir = os.path.dirname(__file__)
+    top_dir = os.path.dirname(pkg_dir)
+
+    subfiles = os.path.join(top_dir, 'subfiles')
 
     # load environment
     env_path = os.path.join(subfiles, 'variables.env')
-    if not load_dotenv(env_path):
+    config = dotenv_values(env_path)
+    if '' in config.values() or None in config.values():
         raise InvalidEnvironment
     
     # check json key file exits
-    keyfile = os.path.join(subfiles, os.getenv('JSON_KEY'))
+    keyfile = os.path.join(subfiles, config['JSON_KEY'])
     if not os.path.isfile(keyfile):
         raise FileNotFoundError
     
-    if not os.getenv('SHEET_NAME'):
-        raise InvalidEnvironment
-    
-    if not os.getenv('EMAIL'):
-        raise InvalidEnvironment
-    
+    os.environ['SHEET_NAME'] = config['SHEET_NAME']
+    os.environ['EMAIL'] = config['EMAIL']
     os.environ['KEY_PATH'] = keyfile
     os.environ['DOWNLOADS'] = os.path.join(os.getenv('HOME'), 'Downloads')
-    os.environ['BADGES'] = os.path.join(os.environ['APP'], 'badges')
+    os.environ['BADGES'] = os.path.join(top_dir, 'badges')
 
 
 def get_queue() -> list:
@@ -56,7 +57,8 @@ def get_queue() -> list:
 
     downloads = os.environ['DOWNLOADS']
     queue = [
-        os.path.join(downloads, x) for x in os.listdir(downloads) \
+        os.path.join(downloads, x) 
+        for x in os.listdir(downloads) 
         if x.endswith('.PNG')
         ]
 
