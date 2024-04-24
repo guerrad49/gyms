@@ -37,8 +37,7 @@ if __name__ == '__main__':
         sys.exit('---Processor ended---\n')
 
     gs = GoogleSheet(os.environ['KEY_PATH'], os.environ['SHEET_NAME'])
-    gs.establish_connection()
-    gs.records_to_dataframes()
+    gs.retrieve_data()
 
     next_id = gs.processed['image'].max() + 1
     ids = range(next_id, next_id + len(queue))
