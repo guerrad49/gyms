@@ -2,9 +2,10 @@
 PokemonGo.gym
 """
 
-from typing import Optional
+from typing import Optional, Any
 
 from geopy.geocoders import Nominatim
+from .exceptions import IntegerError
 
 
 HRS_IN_DAY = 24
@@ -21,22 +22,22 @@ class GoldGym:
     def __init__(
         self, 
         uid:       int,
-        title:     Optional[str]       = 0,
-        victories: Optional[str | int] = 0,
-        days:      Optional[str | int] = 0,
-        hours:     Optional[str | int] = 0,
-        minutes:   Optional[str | int] = 0,
-        treats:    Optional[str | int] = 0
+        title:     Optional[str] = 0,
+        victories: Optional[int] = 0,
+        days:      Optional[int] = 0,
+        hours:     Optional[int] = 0,
+        minutes:   Optional[int] = 0,
+        treats:    Optional[int] = 0
     ) -> None:
-        self.uid       = uid
+        self.uid       = self._int(uid)
         self.title     = title
         self.style     = None
-        self.victories = int(victories)
-        self.days      = int(days)
-        self.hours     = int(hours)
-        self.minutes   = int(minutes)
+        self.victories = self._int(victories)
+        self.days      = self._int(days)
+        self.hours     = self._int(hours)
+        self.minutes   = self._int(minutes)
         self.defended  = 0
-        self.treats    = int(treats)
+        self.treats    = self._int(treats)
         
         """
         Parameters
@@ -57,6 +58,24 @@ class GoldGym:
             The number of treats fed at a gym
         """
 
+
+    def _int(self, x: Any) -> int:
+        """Convert argument to int when possible."""
+
+        # attempt str -> int
+        if isinstance(x, str):
+            try:
+                int(x)
+            except ValueError:
+                raise IntegerError
+            else:
+                return int(x)
+            
+        if not isinstance(x, int):
+            raise IntegerError
+
+        return x
+    
 
     def set_defended(self) -> None:
         """
