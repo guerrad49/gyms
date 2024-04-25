@@ -12,3 +12,8 @@ class InputError(Exception):
     def __str__(self) -> str:
         msg = 'invalid input provided by user'
         return msg
+
+class IntegerError(Exception):
+    def __str__(self) -> str:
+        msg = 'argument cannot be cast to integer'
+        return msg
