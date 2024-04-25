@@ -13,15 +13,15 @@ i11_DIMENSIONS = (1792, 828)
 i15_DIMENSIONS = (2556, 1179)
 
 IMG_STATS_RE = re.compile(r"""
-        (?P<victories>\d{1,4})           # victories
-        [\n\ ]+
-        ((?P<days>\d{1,3})d[\ ]?)?       # days
-        ((?P<hours>\d{1,2})h[\ ]?)?      # hours
-        ((?P<minutes>\d{1,2})m[\ ]?)?    # minutes
-        ((\d{1,2})s)?                    # seconds (very rare)
-        [\n\ ]+
-        (?P<treats>\d{1,4})              # treats
-        """, re.X|re.S)
+    (?P<victories>\d{1,4})           # victories
+    [\n\ ]+
+    ((?P<days>\d{1,3})d[\ ]?)?       # days
+    ((?P<hours>\d{1,2})h[\ ]?)?      # hours
+    ((?P<minutes>\d{1,2})m[\ ]?)?    # minutes
+    ((\d{1,2})s)?                    # seconds (very rare)
+    [\n\ ]+
+    (?P<treats>\d{1,4})              # treats
+    """, re.X|re.S)
 
 
 class Image:
