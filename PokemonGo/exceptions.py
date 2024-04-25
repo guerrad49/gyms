@@ -13,7 +13,7 @@ class InputError(Exception):
         msg = 'invalid input provided by user'
         return msg
 
-class IntegerError(Exception):
+class ArgumentError(Exception):
     def __str__(self) -> str:
-        msg = 'argument cannot be cast to integer'
+        msg = 'argument could not be cast to <int> type'
         return msg
