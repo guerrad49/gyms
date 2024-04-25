@@ -5,7 +5,7 @@ PokemonGo.gym
 from typing import Optional, Any
 
 from geopy.geocoders import Nominatim
-from .exceptions import IntegerError
+from .exceptions import ArgumentError
 
 
 HRS_IN_DAY = 24
@@ -21,13 +21,13 @@ class GoldGym:
     
     def __init__(
         self, 
-        uid:       int,
-        title:     Optional[str] = 0,
-        victories: Optional[int] = 0,
-        days:      Optional[int] = 0,
-        hours:     Optional[int] = 0,
-        minutes:   Optional[int] = 0,
-        treats:    Optional[int] = 0
+        uid:       int | str,
+        title:     Optional[str] = None,
+        victories: Optional[int | str] = 0,
+        days:      Optional[int | str] = 0,
+        hours:     Optional[int | str] = 0,
+        minutes:   Optional[int | str] = 0,
+        treats:    Optional[int | str] = 0
     ) -> None:
         self.uid       = self._int(uid)
         self.title     = title
@@ -67,12 +67,12 @@ class GoldGym:
             try:
                 int(x)
             except ValueError:
-                raise IntegerError
+                raise ArgumentError
             else:
                 return int(x)
             
         if not isinstance(x, int):
-            raise IntegerError
+            raise ArgumentError
 
         return x
     
