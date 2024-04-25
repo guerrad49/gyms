@@ -5,7 +5,7 @@ import sys
 import argparse
 
 from PokemonGo import utils
-from PokemonGo import GoogleSheet, Image, Gym
+from PokemonGo import GoogleSheet, Image, GoldGym
 
 
 #===============================FUNCTIONS=====================================
@@ -53,11 +53,15 @@ if __name__ == '__main__':
 
         coords = gs.unprocessed.at[ridx,'coordinates']            
 
-        g = Gym(id)
-        g.set_fields_from_image(img_data)
-        g.set_location_fields(coords, os.environ['EMAIL'])
+        gg = GoldGym(id, **img_data)
+        gg.set_defended()
+        gg.set_style()
+        gg.set_address(coords, os.environ['EMAIL'])
+        gg.set_city()
+        gg.set_county()
+        gg.set_state()
 
-        gym_row = g.format_fields()
+        gym_row = gg.values()
         img.to_storage(os.environ['BADGES'], id)
 
         gs.write_row(ridx, gym_row)
