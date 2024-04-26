@@ -125,7 +125,13 @@ class GoldGym:
 
 
     def set_city(self) -> None:
-        """Set the gym's city from address"""
+        """
+        Set the gym's city from address.
+        
+        See Also
+        --------
+        GoldGym.set_address
+        """
 
         if 'address' not in vars(self):
             raise AttributeError('address was not set')
@@ -147,7 +153,13 @@ class GoldGym:
 
 
     def set_county(self) -> None:
-        """Set the gym's county from address"""
+        """
+        Set the gym's county from address.
+        
+        See Also
+        --------
+        GoldGym.set_address
+        """
 
         try:
             county = self.address['county']
@@ -164,7 +176,14 @@ class GoldGym:
 
 
     def set_state(self) -> None:
-        """Set the gym's state from address"""
+        """
+        Set the gym's state from address.
+        
+        See Also
+        --------
+        GoldGym.set_address
+        """
+        
         try:
            state = self.address['state']
         except AttributeError:
