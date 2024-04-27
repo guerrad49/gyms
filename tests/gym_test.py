@@ -84,21 +84,21 @@ class GymTests(unittest.TestCase):
     
     #================================================================
     @pytest.mark.order(10)
-    def test_coordinates_value(self):
+    def test_latlon_value(self):
         self.assertRaises(
             ValueError, 
             self.basicGym.set_address, 
-            coordinates = 'a',   # invalid value
+            latlon = 'a',   # invalid value
             email = self.email
         )
     
     @pytest.mark.order(11)
-    def test_coordinates_components(self):
+    def test_latlon_components(self):
         # geolocator.reverse -> None
         self.assertRaises(
             AttributeError, 
             self.basicGym.set_address, 
-            coordinates = '3,4',   # invalid `lat,lon`
+            latlon = '3,4',   # invalid `lat,lon`
             email = self.email
         )
     
@@ -112,7 +112,7 @@ class GymTests(unittest.TestCase):
         self.assertRaises(
             TypeError, 
             self.basicGym.set_address, 
-            coordinates = self.msgLatLon
+            latlon = self.msgLatLon
             )
     
     @pytest.mark.order(14)
@@ -120,7 +120,7 @@ class GymTests(unittest.TestCase):
         self.assertRaises(
             ConfigurationError, 
             self.basicGym.set_address, 
-            coordinates = self.msgLatLon, 
+            latlon = self.msgLatLon, 
             email = None
             )
 
@@ -167,7 +167,7 @@ class GymTests(unittest.TestCase):
         v = list(self.msg)
         self.assertEqual(
             v[8:10], 
-            [self.msg.treats, self.msg.coordinates]
+            [self.msg.treats, self.msg.latlon]
             )
 
 
