@@ -43,7 +43,7 @@ class GoldGym:
         Parameters
         ----------
         uid:
-            The unique id number relating an image to a gym
+            The unique id number identifying a gym
         title:
             The gym title
         victories:
@@ -59,6 +59,7 @@ class GoldGym:
         """
 
 
+    # TODO: update name
     def _int(self, x: Any) -> int:
         """Convert argument to int when possible."""
 
@@ -80,8 +81,7 @@ class GoldGym:
     def set_defended(self) -> None:
         """
         Compute total time defended from time attributes. 
-        User should ensure time attributes have been set. 
-        Otherwise, time defended will be 0.
+        Default is 0.
         """
 
         total = self.days + self.hours / HRS_IN_DAY \
@@ -93,7 +93,7 @@ class GoldGym:
     def set_style(self) -> None:
         """
         Determine gym style based on number of days defended. 
-        Default is `gold` style.
+        Default style is `gold`.
         """
 
         if self.days >= LONG_TERM_DEFENDING:
@@ -138,7 +138,7 @@ class GoldGym:
 
         city = None
 
-        # most common options
+        # common options address dictionary
         for option in ['city','town','village','township']:
             if option in self.address.keys():
                 city = self.address[option]
@@ -183,7 +183,7 @@ class GoldGym:
         --------
         GoldGym.set_address
         """
-        
+
         try:
            state = self.address['state']
         except AttributeError:
@@ -197,6 +197,7 @@ class GoldGym:
         self.state = state.lower()
 
 
+    # TODO: update name
     def values(self) -> list:
         """
         Returns
