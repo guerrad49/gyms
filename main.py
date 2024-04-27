@@ -51,7 +51,7 @@ if __name__ == '__main__':
         title_from_df, ridx = gs.find(img_data['title'], gs.unprocessed)
         img_data['title'] = title_from_df
 
-        coords = gs.unprocessed.at[ridx,'coordinates']            
+        coords = gs.unprocessed.at[ridx,'latlon']            
 
         gg = GoldGym(id, **img_data)
         gg.set_defended()
@@ -61,7 +61,7 @@ if __name__ == '__main__':
         gg.set_county()
         gg.set_state()
 
-        gym_row = gg.values()
+        gym_row = list(gg)
         img.to_storage(os.environ['BADGES'], id)
 
         gs.write_row(ridx, gym_row)
