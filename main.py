@@ -54,7 +54,7 @@ if __name__ == '__main__':
         coords = gs.unprocessed.at[ridx,'latlon']            
 
         gg = GoldGym(id, **img_data)
-        gg.set_defended()
+        gg.set_time_defended()
         gg.set_style()
         gg.set_address(coords, os.environ['EMAIL'])
         gg.set_city()
