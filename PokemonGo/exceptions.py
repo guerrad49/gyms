@@ -15,5 +15,5 @@ class InputError(Exception):
 
 class ArgumentError(Exception):
     def __str__(self) -> str:
-        msg = 'argument could not be cast to <int> type'
+        msg = 'argument must be <int> type'
         return msg
