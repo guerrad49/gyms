@@ -52,23 +52,23 @@ class GoldGym:
     
     def __init__(
         self, 
-        uid:       int | str,
+        uid:       int,
         title:     Optional[str] = None,
-        victories: Optional[int | str] = 0,
-        days:      Optional[int | str] = 0,
-        hours:     Optional[int | str] = 0,
-        minutes:   Optional[int | str] = 0,
-        treats:    Optional[int | str] = 0
+        victories: Optional[int] = 0,
+        days:      Optional[int] = 0,
+        hours:     Optional[int] = 0,
+        minutes:   Optional[int] = 0,
+        treats:    Optional[int] = 0
     ) -> None:
-        self.uid       = self.__toint__(uid)
+        self.uid       = self.__checkint__(uid)
         self.title     = title
         self.style     = None
-        self.victories = self.__toint__(victories)
-        self.days      = self.__toint__(days)
-        self.hours     = self.__toint__(hours)
-        self.minutes   = self.__toint__(minutes)
+        self.victories = self.__checkint__(victories)
+        self.days      = self.__checkint__(days)
+        self.hours     = self.__checkint__(hours)
+        self.minutes   = self.__checkint__(minutes)
         self.defended  = 0
-        self.treats    = self.__toint__(treats)
+        self.treats    = self.__checkint__(treats)
         
         """
         Parameters
@@ -88,33 +88,9 @@ class GoldGym:
         treats:
             The number of treats fed at a gym
         """
-
-
-    def __toint__(self, x: Any) -> int:
-        """
-        Attempt argument conversion to integer for common 
-        data types.
-        """
-
-        if isinstance(x, int):
-            return x
-
-        if isinstance(x, float):
-            if x == int(x):
-                return int(x)
-            raise ArgumentError
-        
-        if isinstance(x, str):
-            try:
-                int(x)
-            except ValueError:
-                raise ArgumentError
-            else:
-                return int(x)
-
-        raise ArgumentError
     
 
+    # TODO: move to GoogleSheet possibly
     def __iter__(self):
         """
         Overwritten to return iterable of object's 
@@ -126,36 +102,44 @@ class GoldGym:
                 pass
             else:
                 yield val
+
+    
+    def __checkint__(self, x: Any) -> int:
+        """Check argument type for <int>."""
+
+        if not isinstance(x, int):
+            raise ArgumentError
+        return x
     
 
-    def set_victories(self, x: int | str) -> None:
+    def set_victories(self, x: int) -> None:
         """Safe setting function for victories."""
 
-        self.victories = self.__toint__(x)
+        self.victories = self.__checkint__(x)
     
 
-    def set_days(self, x: int | str) -> None:
+    def set_days(self, x: int) -> None:
         """Safe setting function for days."""
         
-        self.days = self.__toint__(x)
+        self.days = self.__checkint__(x)
     
 
-    def set_hours(self, x: int | str) -> None:
+    def set_hours(self, x: int) -> None:
         """Safe setting function for hours."""
 
-        self.hours = self.__toint__(x)
+        self.hours = self.__checkint__(x)
     
 
-    def set_minutes(self, x: int | str) -> None:
+    def set_minutes(self, x: int) -> None:
         """Safe setting function for minutes."""
         
-        self.minutes = self.__toint__(x)
+        self.minutes = self.__checkint__(x)
     
 
-    def set_treats(self, x: int | str) -> None:
+    def set_treats(self, x: int) -> None:
         """Safe setting function for treats."""
         
-        self.treats = self.__toint__(x)
+        self.treats = self.__checkint__(x)
 
 
     def set_time_defended(self) -> None:
