@@ -158,7 +158,7 @@ class GymTests(unittest.TestCase):
     #================================================================
     @pytest.mark.order(19)
     def test_values_address(self):
-        self.msg.set_defended()
+        self.msg.set_time_defended()
         self.msg.set_style()
         self.msg.set_address(self.msgLatLon, self.email)
         self.msg.set_city()
