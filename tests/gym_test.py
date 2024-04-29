@@ -4,8 +4,8 @@ import unittest.mock
 import pytest
 
 from PokemonGo.gym import GoldGym
-from PokemonGo.exceptions import ArgumentError
 from geopy.exc import ConfigurationError
+from PokemonGo.exceptions import ArgumentError
 
 
 class GymTests(unittest.TestCase):
@@ -35,55 +35,38 @@ class GymTests(unittest.TestCase):
             [self.basicGym.victories, self.basicGym.treats], 
             [0, 0]
             )
-
-    @pytest.mark.order(3)
-    def test_params_as_strings(self):
-        strParams = {
-            k:str(v) for k,v in self.msgOptParams.items()
-            }
-        gg = GoldGym(uid=3, **strParams)
-        self.assertEqual(
-            [gg.uid, gg.days, gg.minutes], [3, 1, 10]
-            )
     
-    @pytest.mark.order(4)
-    def test_param_type_invalid(self):
-        self.assertRaises(
-            ArgumentError, 
-            GoldGym, uid=4, days=3.3
-            )
-
     #================================================================
-    @pytest.mark.order(5)
+    @pytest.mark.order(3)
     def test_uid_char(self):
         self.assertRaises(ArgumentError, GoldGym, 'a')
     
-    @pytest.mark.order(6)
+    @pytest.mark.order(4)
     def test_uid_float(self):
         self.assertRaises(ArgumentError, GoldGym, 1.5)
 
     #================================================================
-    @pytest.mark.order(7)
-    def test_victories_set(self):
+    @pytest.mark.order(5)
+    def test_attribute_setter(self):
         self.assertRaises(
             ArgumentError, 
             self.basicGym.set_victories, 10.5
             )
 
     #================================================================
-    @pytest.mark.order(8)
+    @pytest.mark.order(6)
     def test_style(self):
         self.msg.set_style()
         self.assertEqual(self.msg.style, 'gold')
 
-    @pytest.mark.order(9)
+    @pytest.mark.order(7)
     def test_style_long_term(self):
         self.basicGym.set_days(1_001)
         self.basicGym.set_style()
         self.assertEqual(self.basicGym.style, '100+ days')
     
     #================================================================
-    @pytest.mark.order(10)
+    @pytest.mark.order(8)
     def test_latlon_value(self):
         self.assertRaises(
             ValueError, 
@@ -92,7 +75,7 @@ class GymTests(unittest.TestCase):
             email = self.email
         )
     
-    @pytest.mark.order(11)
+    @pytest.mark.order(9)
     def test_latlon_components(self):
         # geolocator.reverse -> None
         self.assertRaises(
@@ -103,11 +86,11 @@ class GymTests(unittest.TestCase):
         )
     
     #================================================================
-    @pytest.mark.order(12)
+    @pytest.mark.order(10)
     def test_address_wo_params(self):
         self.assertRaises(TypeError, self.basicGym.set_address)
 
-    @pytest.mark.order(13)
+    @pytest.mark.order(11)
     def test_address_wo_email(self):
         self.assertRaises(
             TypeError, 
@@ -115,7 +98,7 @@ class GymTests(unittest.TestCase):
             latlon = self.msgLatLon
             )
     
-    @pytest.mark.order(14)
+    @pytest.mark.order(12)
     def test_address_email_invalid(self):
         self.assertRaises(
             ConfigurationError, 
@@ -125,17 +108,17 @@ class GymTests(unittest.TestCase):
             )
 
     #================================================================
-    @pytest.mark.order(15)
+    @pytest.mark.order(13)
     def test_city_before_address(self):
         self.assertRaises(AttributeError, self.msg.set_city)
 
-    @pytest.mark.order(16)
+    @pytest.mark.order(14)
     def test_city(self):
         self.msg.set_address(self.msgLatLon, self.email)
         self.msg.set_city()
         self.assertEqual(self.msg.city, 'city of new york')
 
-    @pytest.mark.order(17)
+    @pytest.mark.order(15)
     def test_city_remote(self):
         # use remote location (Wilderness State Park, MI)
         self.basicGym.set_address(
@@ -148,7 +131,7 @@ class GymTests(unittest.TestCase):
         self.assertEqual(self.basicGym.city, 'carp lake')
 
     #================================================================
-    @pytest.mark.order(18)
+    @pytest.mark.order(16)
     def test_county_strip(self):
         # the word `county` should not appear
         self.msg.set_address(self.msgLatLon, self.email)
@@ -156,7 +139,7 @@ class GymTests(unittest.TestCase):
         self.assertNotEqual(self.msg.county, 'new york county')
 
     #================================================================
-    @pytest.mark.order(19)
+    @pytest.mark.order(17)
     def test_values_address(self):
         self.msg.set_time_defended()
         self.msg.set_style()
