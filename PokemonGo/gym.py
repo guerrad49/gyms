@@ -11,6 +11,9 @@ data in one location such as:
 Once all gym values are set, the best use-case is by using
 `list(myGym)` as the data parameter of the `write_row`
 method of PokemonGo.GoogleSheet class.
+
+It is also recommended the use of setter class methods 
+for safe-handling of class attributes.
 """
 
 
@@ -139,20 +142,23 @@ class GoldGym:
 
     def set_hours(self, x: int | str) -> None:
         """Safe setting function for hours."""
+
         self.hours = self.__toint__(x)
     
 
     def set_minutes(self, x: int | str) -> None:
         """Safe setting function for minutes."""
+        
         self.minutes = self.__toint__(x)
     
 
     def set_treats(self, x: int | str) -> None:
         """Safe setting function for treats."""
+        
         self.treats = self.__toint__(x)
 
 
-    def set_defended(self) -> None:
+    def set_time_defended(self) -> None:
         """
         Compute total time defended from time attributes. 
         Default is 0.
