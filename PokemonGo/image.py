@@ -141,6 +141,7 @@ class BadgeImage:
         match = re.search(TOTAL_ACTIVITY_RE, text)
         if match is None:
             # manually enter image stats
+            # TODO: log the error
             prompt = 'Enter STATS for `{}`:\t'.format(self.path)
             inText = input(prompt).strip()
             match  = re.search(TOTAL_ACTIVITY_RE, inText)
