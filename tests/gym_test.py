@@ -23,12 +23,12 @@ class GymTests(unittest.TestCase):
         self.msgLatLon = '40.75067515347, -73.99339578809'
         self.email = 'lindamcmahon4u@gmail.com'   # valid email
 
-    #================================================================
+    #==========================================================================
     @pytest.mark.order(1)
     def test_empty_instance(self):
         self.assertRaises(TypeError, GoldGym)
     
-    #================================================================
+    #==========================================================================
     @pytest.mark.order(2)
     def test_params_default(self):
         self.assertEqual(
@@ -36,7 +36,7 @@ class GymTests(unittest.TestCase):
             [0, 0]
             )
     
-    #================================================================
+    #==========================================================================
     @pytest.mark.order(3)
     def test_uid_char(self):
         self.assertRaises(ArgumentError, GoldGym, 'a')
@@ -45,15 +45,12 @@ class GymTests(unittest.TestCase):
     def test_uid_float(self):
         self.assertRaises(ArgumentError, GoldGym, 1.5)
 
-    #================================================================
+    #==========================================================================
     @pytest.mark.order(5)
     def test_attribute_setter(self):
-        self.assertRaises(
-            ArgumentError, 
-            self.basicGym.set_victories, 10.5
-            )
+        self.assertRaises(ArgumentError, self.basicGym.set_victories, 10.5)
 
-    #================================================================
+    #==========================================================================
     @pytest.mark.order(6)
     def test_style(self):
         self.msg.set_style()
@@ -65,7 +62,7 @@ class GymTests(unittest.TestCase):
         self.basicGym.set_style()
         self.assertEqual(self.basicGym.style, '100+ days')
     
-    #================================================================
+    #==========================================================================
     @pytest.mark.order(8)
     def test_latlon_value(self):
         self.assertRaises(
@@ -85,7 +82,7 @@ class GymTests(unittest.TestCase):
             email = self.email
         )
     
-    #================================================================
+    #==========================================================================
     @pytest.mark.order(10)
     def test_address_wo_params(self):
         self.assertRaises(TypeError, self.basicGym.set_address)
@@ -107,7 +104,7 @@ class GymTests(unittest.TestCase):
             email = None
             )
 
-    #================================================================
+    #==========================================================================
     @pytest.mark.order(13)
     def test_city_before_address(self):
         self.assertRaises(AttributeError, self.msg.set_city)
@@ -130,7 +127,7 @@ class GymTests(unittest.TestCase):
         self.basicGym.set_city()
         self.assertEqual(self.basicGym.city, 'carp lake')
 
-    #================================================================
+    #==========================================================================
     @pytest.mark.order(16)
     def test_county_strip(self):
         # the word `county` should not appear
@@ -138,7 +135,7 @@ class GymTests(unittest.TestCase):
         self.msg.set_county()
         self.assertNotEqual(self.msg.county, 'new york county')
 
-    #================================================================
+    #==========================================================================
     @pytest.mark.order(17)
     def test_values_address(self):
         self.msg.set_time_defended()
@@ -148,10 +145,7 @@ class GymTests(unittest.TestCase):
         self.msg.set_county()
         self.msg.set_state()
         v = list(self.msg)
-        self.assertEqual(
-            v[8:10], 
-            [self.msg.treats, self.msg.latlon]
-            )
+        self.assertEqual(v[8:10], [self.msg.treats, self.msg.latlon])
 
 
 if __name__ == '__main__':
