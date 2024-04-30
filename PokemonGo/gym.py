@@ -5,7 +5,7 @@ PokemonGo.gym
 This module contains GoldGym class for compiling a gym's 
 data in one location such as:
     1. Initial known gym values from database
-    2. Values read using PokemonGo.Image class
+    2. Values read using PokemonGo.BadgeImage class
     3. Methods which complete gym location values
 
 Once all gym values are set, the best use-case is by using
@@ -30,7 +30,7 @@ LONG_TERM_DEFENDING = 100   # in days
 
 class GoldGym:
     """
-    An instance of this class manages gym-related fields.
+    An instance of this class manages PokemonGo gym-related fields.
 
     Examples
     --------
@@ -59,7 +59,7 @@ class GoldGym:
         hours:     Optional[int] = 0,
         minutes:   Optional[int] = 0,
         treats:    Optional[int] = 0
-    ) -> None:
+        ) -> None:
         self.uid       = self.__checkint__(uid)
         self.title     = title
         self.style     = None
