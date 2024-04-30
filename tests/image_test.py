@@ -36,13 +36,13 @@ class ImageTests(unittest.TestCase):
         self.assertEqual(self.im01.get_title(), 'third ward park playground')
 
     #==========================================================================
-    def test_stats(self):
+    def test_activity(self):
         self.assertEqual(
             self.im02.get_gym_activity(), 
             {'victories':18, 'days':25, 'hours':18, 'minutes':1, 'treats':9}
             )
 
-    def test_stats_manual(self):
+    def test_activity_manual(self):
         unittest.mock.builtins.input = lambda _: ""
         pass
 
