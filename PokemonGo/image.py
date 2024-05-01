@@ -48,7 +48,7 @@ class BadgeImage:
     >>> img = BadgeImage('/badges/IMG_0001.PNG')
     """
     
-    def __init__(self, path: str):
+    def __init__(self, path: str) -> None:
         """
         Parameters
         ----------
@@ -61,7 +61,7 @@ class BadgeImage:
         self.set_processing_params()
 
     
-    def set_processing_params(self):
+    def set_processing_params(self) -> None:
         """
         Determine iPhone model parameters from image dimensions.
         Cannot be used on unknown models.
