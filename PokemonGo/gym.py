@@ -60,15 +60,15 @@ class GoldGym:
         minutes:   Optional[int] = 0,
         treats:    Optional[int] = 0
         ) -> None:
-        self.uid       = self.__checkint__(uid)
+        self.uid       = self._checkint(uid)
         self.title     = title
         self.style     = None
-        self.victories = self.__checkint__(victories)
-        self.days      = self.__checkint__(days)
-        self.hours     = self.__checkint__(hours)
-        self.minutes   = self.__checkint__(minutes)
+        self.victories = self._checkint(victories)
+        self.days      = self._checkint(days)
+        self.hours     = self._checkint(hours)
+        self.minutes   = self._checkint(minutes)
         self.defended  = 0
-        self.treats    = self.__checkint__(treats)
+        self.treats    = self._checkint(treats)
         
         """
         Parameters
@@ -89,22 +89,7 @@ class GoldGym:
             The number of treats fed at a gym
         """
     
-
-    # TODO: move to GoogleSheet possibly
-    def __iter__(self):
-        """
-        Overwritten to return iterable of object's 
-        attribute values EXCEPT `address` value.
-        """
-
-        for key,val in self.__dict__.items():
-            if key == 'address':
-                pass
-            else:
-                yield val
-
-    
-    def __checkint__(self, x: Any) -> int:
+    def _checkint(self, x: Any) -> int:
         """Check argument type for <int>."""
 
         if not isinstance(x, int):
@@ -115,31 +100,31 @@ class GoldGym:
     def set_victories(self, x: int) -> None:
         """Safe setting function for victories."""
 
-        self.victories = self.__checkint__(x)
+        self.victories = self._checkint(x)
     
 
     def set_days(self, x: int) -> None:
         """Safe setting function for days."""
         
-        self.days = self.__checkint__(x)
+        self.days = self._checkint(x)
     
 
     def set_hours(self, x: int) -> None:
         """Safe setting function for hours."""
 
-        self.hours = self.__checkint__(x)
+        self.hours = self._checkint(x)
     
 
     def set_minutes(self, x: int) -> None:
         """Safe setting function for minutes."""
         
-        self.minutes = self.__checkint__(x)
+        self.minutes = self._checkint(x)
     
 
     def set_treats(self, x: int) -> None:
         """Safe setting function for treats."""
         
-        self.treats = self.__checkint__(x)
+        self.treats = self._checkint(x)
 
 
     def set_time_defended(self) -> None:
