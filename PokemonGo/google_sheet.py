@@ -2,33 +2,35 @@ import gspread
 import numpy as np
 import pandas as pd
 
+from typing import Optional
+
 from .utils import are_similar
 from .exceptions import InputError
 
 
 class GoogleSheet:
-    '''A class for handling reading/writing to a google sheet'''
+    """A class for handling reading/writing to a google sheet."""
     
-    def __init__(self, key: str, sheetname: str):
-        '''
+    def __init__(self, keyPath: str, sheetName: str) -> None:
+        """
         Parameters
         ----------
-        key: 
+        keyPath: 
             The path to json key required for API access
-        sheetname: 
+        sheetName: 
             The name of Google Sheet with data
-        '''
+        """
 
-        self.key = key
-        self.sheetname = sheetname
+        self.retrieve_data(keyPath, sheetName)
 
 
-    def retrieve_data(self):
-        '''Partition sheet records to category dataframes'''
+    def retrieve_data(self, keyPath: str, sheetName: str) -> None:
+        """Partition sheet records to category dataframes."""
 
-        self.gc    = gspread.service_account(self.key)
-        self.sheet = self.gc.open(self.sheetname).sheet1
-        df         = pd.DataFrame(self.sheet.get_all_records())
+        client     = gspread.service_account(keyPath)
+        self.sheet = client.open(sheetName).sheet1
+        records    = self.sheet.get_all_records()
+        df         = pd.DataFrame(records)
         df.index   = np.arange(2, len(df) + 2)    # start at row 2
 
         self.processed   = df[df['image'] != '']
@@ -36,25 +38,34 @@ class GoogleSheet:
         print('INFO - Data extract successful.')
     
     
-    def find(self, title: str, df: pd.DataFrame) -> tuple[str, int]:
-        '''
-        Locate given title within database.
+    def find(
+            self, 
+            title: str, 
+            new: Optional[bool] = True
+            ) -> tuple[str, int]:
+        """
+        Locates title within database and corrects title if necessary.
         
         Parameters
         ----------
-        title: 
+        title:
             The title to locate
-        df:
-            The dataframe to search over
+        new:
+            The truth value whether title corresponds to new Gym
 
         Returns
         -------
         title:
             The true title in database
-        row_num:
+        rowNum:
             The row index for title match
-        '''
+        """
 
+        if new:
+            df = self.unprocessed
+        else:
+            df = self.processed
+        
         matches = df[df['title'] == title]
 
         # check similar titles when no exact match
@@ -64,43 +75,42 @@ class GoogleSheet:
                     ]
             title = matches.iat[0,1]   # true title
         
-        # check when multiple matches
+        # check with user when multiple matches
         if matches.shape[0] > 1:
             columns  = ['title','coordinates','city','state']
             prompt   = 'Duplicates found.\n'
             prompt  += matches[columns].to_string()
             prompt  += '\nEnter correct INDEX:\t'
-            row_num  = int(input(prompt))
-            if row_num not in matches.index:
+            rowNum   = int(input(prompt))
+            if rowNum not in matches.index:
                 raise InputError
         else:
-            row_num = matches.index[0]
+            rowNum = matches.index[0]
         
-        return title, row_num
+        return title, rowNum
 
 
-    def write_row(self, row_num: int, data: list):
-        '''
+    def write_row(self, rowNum: int, data: list):
+        """
         Fill sheet row with new data.
         
         Parameters
         ----------
-        row_num:
+        rowNum:
             The row number to write in google sheet
         data:
             The content values to write
-        '''
+        """
 
-        old_row = 'A{0}:M{0}'.format(row_num)
-        self.sheet.update(old_row, [data])
+        oldRow = 'A{0}:M{0}'.format(rowNum)
+        self.sheet.update(oldRow, [data])
         
-        # show what's being written
-        print('Writing to row {}'.format(row_num))
+        print('Writing to row {}'.format(rowNum))
         print(data)
 
 
     def sort_by_location(self):
-        '''Optional sort of sheet contents geographically'''
+        """Optional sort of sheet contents geographically."""
 
         prompt = 'Ready to sort spreadsheet? (y/n)\t'
         if input(prompt) != 'y':
@@ -108,15 +118,15 @@ class GoogleSheet:
         
         cols = self.sheet.row_values(1)   # column titles
 
-        # adjust col num by 1 since row values have no title
-        by_city   = (cols.index('city') + 1, 'asc')
-        by_county = (cols.index('county') + 1, 'asc')
-        by_state  = (cols.index('state') + 1, 'asc')
+        # (column index, 'ascending')
+        byCity   = (cols.index('city')   + 1, 'asc')
+        byCounty = (cols.index('county') + 1, 'asc')
+        byState  = (cols.index('state')  + 1, 'asc')
         
-        row_len = 'A2:M{}'.format(self.sheet.row_count)
+        rowLen = 'A2:M{}'.format(self.sheet.row_count)
 
         self.sheet.sort(
-            by_state, by_county, by_city, 
-            range=row_len
+            byState, byCounty, byCity, 
+            range=rowLen
             )
         print('INFO - Sorting complete.\n')
