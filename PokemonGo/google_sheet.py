@@ -5,6 +5,7 @@ import pandas as pd
 from typing import Optional
 
 from .utils import are_similar
+from .gym import GoldGym
 from .exceptions import InputError
 
 
@@ -21,11 +22,14 @@ class GoogleSheet:
             The name of Google Sheet with data
         """
 
-        self.retrieve_data(keyPath, sheetName)
+        self._retrieve_data(keyPath, sheetName)
 
 
-    def retrieve_data(self, keyPath: str, sheetName: str) -> None:
-        """Partition sheet records to category dataframes."""
+    def _retrieve_data(self, keyPath: str, sheetName: str) -> None:
+        """
+        Partition sheet records to category dataframes.
+        This method is only called at instantiation.
+        """
 
         client     = gspread.service_account(keyPath)
         self.sheet = client.open(sheetName).sheet1
@@ -90,23 +94,29 @@ class GoogleSheet:
         return title, rowNum
 
 
-    def write_row(self, rowNum: int, data: list):
+    def write_row(self, rowNum: int, gymObj: GoldGym):
         """
-        Fill sheet row with new data.
+        Fill sheet row with new Gym values.
         
         Parameters
         ----------
         rowNum:
             The row number to write in google sheet
-        data:
-            The content values to write
+        gymObj:
+            The Gym which values will be used
         """
 
+        # get Gym values needed
+        newVals = [
+            v for k,v in vars(gymObj).items()
+            if k != 'address'
+        ]
+
         oldRow = 'A{0}:M{0}'.format(rowNum)
-        self.sheet.update(oldRow, [data])
+        self.sheet.update(oldRow, [newVals])
         
         print('Writing to row {}'.format(rowNum))
-        print(data)
+        print(newVals)
 
 
     def sort_by_location(self):
