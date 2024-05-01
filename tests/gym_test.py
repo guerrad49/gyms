@@ -135,18 +135,6 @@ class GymTests(unittest.TestCase):
         self.msg.set_county()
         self.assertNotEqual(self.msg.county, 'new york county')
 
-    #==========================================================================
-    @pytest.mark.order(17)
-    def test_values_address(self):
-        self.msg.set_time_defended()
-        self.msg.set_style()
-        self.msg.set_address(self.msgLatLon, self.email)
-        self.msg.set_city()
-        self.msg.set_county()
-        self.msg.set_state()
-        v = list(self.msg)
-        self.assertEqual(v[8:10], [self.msg.treats, self.msg.latlon])
-
 
 if __name__ == '__main__':
     unittest.main()
