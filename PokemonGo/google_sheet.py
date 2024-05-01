@@ -94,7 +94,7 @@ class GoogleSheet:
         return title, rowNum
 
 
-    def write_row(self, rowNum: int, gymObj: GoldGym):
+    def write_row(self, rowNum: int, gymObj: GoldGym) -> None:
         """
         Fill sheet row with new Gym values.
         
@@ -119,12 +119,8 @@ class GoogleSheet:
         print(newVals)
 
 
-    def sort_by_location(self):
+    def sort_by_location(self) -> None:
         """Optional sort of sheet contents geographically."""
-
-        prompt = 'Ready to sort spreadsheet? (y/n)\t'
-        if input(prompt) != 'y':
-            return None
         
         cols = self.sheet.row_values(1)   # column titles
 
