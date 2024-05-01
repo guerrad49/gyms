@@ -8,9 +8,9 @@ data in one location such as:
     2. Values read using PokemonGo.BadgeImage class
     3. Methods which complete gym location values
 
-Once all gym values are set, the best use-case is by using
-`list(myGym)` as the data parameter of the `write_row`
-method of PokemonGo.GoogleSheet class.
+Once all gym values are set, the best use-case is to pass
+a GoldGym object to the `write_row` method of 
+PokemonGo.GoogleSheet class.
 
 It is also recommended the use of setter class methods 
 for safe-handling of class attributes.
