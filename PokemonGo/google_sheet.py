@@ -9,6 +9,8 @@ from .gym import GoldGym
 from .exceptions import InputError
 
 
+# TODO: Write constructor that takes in a dataframe.
+
 class GoogleSheet:
     """A class for handling reading/writing to a google sheet."""
     
@@ -37,8 +39,8 @@ class GoogleSheet:
         df         = pd.DataFrame(records)
         df.index   = np.arange(2, len(df) + 2)    # start at row 2
 
-        self.processed   = df[df['image'] != '']
-        self.unprocessed = df[df['image'] == '']
+        self.processed   = df[df['uid'] != '']
+        self.unprocessed = df[df['uid'] == '']
         print('INFO - Data extract successful.')
     
     
@@ -81,7 +83,7 @@ class GoogleSheet:
         
         # check with user when multiple matches
         if matches.shape[0] > 1:
-            columns  = ['title','coordinates','city','state']
+            columns  = ['title','latlon','city','state']
             prompt   = 'Duplicates found.\n'
             prompt  += matches[columns].to_string()
             prompt  += '\nEnter correct INDEX:\t'
