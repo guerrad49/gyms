@@ -5,7 +5,6 @@ import pytest
 
 from PokemonGo.google_sheet import GoogleSheet
 
-# TODO: Write tests cases once GoogleSheet can take in dataframe.
 
 class SheetTests(unittest.TestCase):
     def setUp(self):
