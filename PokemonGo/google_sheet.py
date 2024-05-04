@@ -1,3 +1,22 @@
+"""
+PokemonGo.google_sheet
+----------------------
+
+This module contains the GoogleSheet class which extends 
+the `gspread` library for our specific purposes. Data from 
+Google Sheets is accessed locally as pd.DataFrames. The 
+methods used as motivation for this class are:
+    1. self.find
+    2. self.write_row
+
+All connections to Google are handled automatically.
+
+See Also
+--------
+gspread
+"""
+
+
 import gspread
 import numpy as np
 import pandas as pd
@@ -9,10 +28,16 @@ from .gym import GoldGym
 from .exceptions import InputError
 
 
-# TODO: Write constructor that takes in a dataframe.
-
 class GoogleSheet:
-    """A class for handling reading/writing to a google sheet."""
+    """
+    An instance of this class handles access to a Google Sheet.
+    
+    Examples
+    --------
+    >>> # instance w/ required parameters
+    >>> myKey = 'path/to/json/key'    # valid path
+    >>> gs = GoogleSheet(myKey, 'my_sheet_name')
+    """
     
     def __init__(self, keyPath: str, sheetName: str) -> None:
         """
@@ -30,7 +55,7 @@ class GoogleSheet:
     def _retrieve_data(self, keyPath: str, sheetName: str) -> None:
         """
         Partition sheet records to category dataframes.
-        This method is only called at instantiation.
+        This method is only called at initialization.
         """
 
         client     = gspread.service_account(keyPath)
@@ -106,6 +131,13 @@ class GoogleSheet:
             The row number to write in google sheet
         gymObj:
             The Gym which values will be used
+
+        Examples
+        --------
+        >>> type(someGym)
+        <class 'PokemonGo.gym.GoldGym'>
+        >>> # write to row 10 in Google Sheet
+        >>> gs.write_row(10, someGym)
         """
 
         # get Gym values needed
@@ -114,6 +146,7 @@ class GoogleSheet:
             if k != 'address'
         ]
 
+        # newVals -> A:M is one-to-one mapping
         oldRow = 'A{0}:M{0}'.format(rowNum)
         self.sheet.update(oldRow, [newVals])
         
@@ -122,7 +155,7 @@ class GoogleSheet:
 
 
     def sort_by_location(self) -> None:
-        """Optional sort of sheet contents geographically."""
+        """Sort sheet contents geographically."""
         
         cols = self.sheet.row_values(1)   # column titles
 
@@ -133,6 +166,7 @@ class GoogleSheet:
         
         rowLen = 'A2:M{}'.format(self.sheet.row_count)
 
+        # sort by state, then county, then city
         self.sheet.sort(
             byState, byCounty, byCity, 
             range=rowLen
