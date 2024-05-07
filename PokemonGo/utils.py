@@ -10,10 +10,10 @@ SIMILARITY_MIN = 0.9
 
 
 def are_similar(x: str, y: str) -> bool:
-    '''
+    """
     Determine if string similarity is above a threshold.
     WARNING: For short strings, user may want to decrease SIMILARITY_MIN.
-    '''
+    """
 
     likeness = SequenceMatcher(None, x, y).ratio()
 
@@ -27,16 +27,18 @@ def are_similar(x: str, y: str) -> bool:
     return False
 
 
-def load_env():
-    # get top level directory for package
-    pkg_dir = os.path.dirname(__file__)
-    top_dir = os.path.dirname(pkg_dir)
+def load_env() -> None:
+    """Check and load package environment variables."""
 
-    subfiles = os.path.join(top_dir, 'subfiles')
+    # get top level directory for package
+    packageDir = os.path.dirname(__file__)
+    topDir     = os.path.dirname(packageDir)
+
+    subfiles = os.path.join(topDir, 'subfiles')
 
     # load environment
-    env_path = os.path.join(subfiles, 'variables.env')
-    config = dotenv_values(env_path)
+    envPath = os.path.join(subfiles, 'variables.env')
+    config = dotenv_values(envPath)
     if '' in config.values() or None in config.values():
         raise InvalidEnvironment
     
@@ -49,7 +51,7 @@ def load_env():
     os.environ['EMAIL'] = config['EMAIL']
     os.environ['KEY_PATH'] = keyfile
     os.environ['DOWNLOADS'] = os.path.join(os.getenv('HOME'), 'Downloads')
-    os.environ['BADGES'] = os.path.join(top_dir, 'badges')
+    os.environ['BADGES'] = os.path.join(topDir, 'badges')
 
 
 def get_queue() -> list:
