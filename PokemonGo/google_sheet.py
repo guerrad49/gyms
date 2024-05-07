@@ -154,7 +154,7 @@ class GoogleSheet:
         print(newVals)
 
 
-    def sort_by_location(self) -> None:
+    def geo_sort(self) -> None:
         """Sort sheet contents geographically."""
         
         cols = self.sheet.row_values(1)   # column titles
