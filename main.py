@@ -5,7 +5,7 @@ import sys
 import argparse
 
 from PokemonGo import utils
-from PokemonGo import GoogleSheet, Image, GoldGym
+from PokemonGo import GoogleSheet, BadgeImage, GoldGym
 
 
 #===============================FUNCTIONS=====================================
@@ -37,23 +37,22 @@ if __name__ == '__main__':
         sys.exit('---Processor ended---\n')
 
     gs = GoogleSheet(os.environ['KEY_PATH'], os.environ['SHEET_NAME'])
-    gs.retrieve_data()
 
-    next_id = gs.processed['image'].max() + 1
-    ids = range(next_id, next_id + len(queue))
+    nextId = gs.processed['image'].max() + 1
+    ids = range(nextId, nextId + len(queue))
 
     print('\nINFO - Begin scanning process.\n')
 
     for id, path in zip(ids, queue):
-        img = Image(path)
-        img_data = img.get_title() | img.get_stats()   # python3.9+
+        img = BadgeImage(path)
+        imgData = img.get_title() | img.get_gym_activity()   # python3.9+
 
-        title_from_df, ridx = gs.find(img_data['title'], gs.unprocessed)
-        img_data['title'] = title_from_df
+        titleFromDf, ridx = gs.find(imgData['title'], gs.unprocessed)
+        imgData['title'] = titleFromDf
 
         coords = gs.unprocessed.at[ridx,'latlon']            
 
-        gg = GoldGym(id, **img_data)
+        gg = GoldGym(id, **imgData)
         gg.set_time_defended()
         gg.set_style()
         gg.set_address(coords, os.environ['EMAIL'])
@@ -61,10 +60,10 @@ if __name__ == '__main__':
         gg.set_county()
         gg.set_state()
 
-        gym_row = list(gg)
+        gymRow = list(gg)
         img.to_storage(os.environ['BADGES'], id)
 
-        gs.write_row(ridx, gym_row)
+        gs.write_row(ridx, gymRow)
         print()
 
-    gs.sort_by_location()
+    gs.geo_sort()
