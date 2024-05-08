@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import pdb
 import os
 import sys
 import argparse
@@ -31,6 +32,7 @@ if __name__ == '__main__':
     args = parse_args()
 
     utils.load_env()
+    utils.set_logger()
     
     queue = utils.get_queue()
     if len(queue) == 0:
@@ -45,7 +47,7 @@ if __name__ == '__main__':
 
     for id, path in zip(ids, queue):
         img = BadgeImage(path)
-        imgData = img.get_title() | img.get_gym_activity()   # python3.9+
+        imgData = img.get_title() | img.get_gym_activity(id)   # python3.9+
 
         titleFromDf, ridx = gs.find(imgData['title'], gs.unprocessed)
         imgData['title'] = titleFromDf
