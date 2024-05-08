@@ -20,6 +20,8 @@ for safe-handling of class attributes.
 from typing import Optional, Any
 
 from geopy.geocoders import Nominatim
+
+from .utils import log_error
 from .exceptions import ArgumentError
 
 
@@ -194,8 +196,8 @@ class GoldGym:
                 city = self.address[option]
         
         # manually enter city name
-        # TODO: log the error
         if not city:
+            log_error('CITY', self.uid)
             prompt = 'Enter CITY for `{}`:\t'.format(self.latlon)
             city   = input(prompt).strip()
 
@@ -218,7 +220,7 @@ class GoldGym:
             raise AttributeError('address was not set')
         except KeyError:
             # manually enter county name
-            # TODO: log the error
+            log_error('COUNTY', self.uid)
             prompt = 'Enter COUNTY for `{}`:\t'.format(self.latlon)
             county = input(prompt).strip()
         
@@ -242,7 +244,7 @@ class GoldGym:
             raise AttributeError('address was not set')
         except KeyError:
             # manually enter state name (RARE)
-            # TODO: log the error
+            log_error('STATE', self.uid)
             prompt = 'Enter STATE for `{}`:\t'.format(self.latlon)
             state = input(prompt).strip()
 
