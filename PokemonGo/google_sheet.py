@@ -17,11 +17,11 @@ gspread
 """
 
 
+from typing import Optional
+
 import gspread
 import numpy as np
 import pandas as pd
-
-from typing import Optional
 
 from .utils import are_similar
 from .gym import GoldGym
@@ -104,6 +104,9 @@ class GoogleSheet:
             matches = df[df['title']
                     .apply(lambda x: are_similar(x, title))
                     ]
+            # TODO: If no matches are similar, it's possible matches
+            # still returns empty. Fix this with manual input and
+            # log the error.
             title = matches.iat[0,1]   # true title
         
         # check with user when multiple matches
