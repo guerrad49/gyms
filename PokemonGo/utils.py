@@ -1,4 +1,6 @@
 import os
+import logging
+from typing import Optional
 from difflib import SequenceMatcher
 
 from dotenv import dotenv_values
@@ -7,6 +9,7 @@ from .exceptions import InvalidEnvironment
 
 
 SIMILARITY_MIN = 0.9
+LOG_PATH = 'subfiles/pogo.log'
 
 
 def are_similar(x: str, y: str) -> bool:
@@ -73,3 +76,41 @@ def get_queue() -> list:
         print(prompt)
     
     return queue
+
+
+def set_logger() -> None:
+    """Set configurations for package logger."""
+    
+    pogoFormat = '%(asctime)s   %(levelname)6s: %(image)s   %(message)s'
+    logger = logging.getLogger('pogoLog')
+    logging.basicConfig(
+        filename = LOG_PATH, 
+        format   = pogoFormat, 
+        datefmt  = '%Y-%m-%d %H:%M:%S', 
+        level    = logging.DEBUG
+        )
+
+
+def log_error(type: str, gymUid: int, details: Optional[str] = '') -> None:
+    """
+    Helper function for logging errors within modules.
+
+    Parameters
+    ----------
+    type:
+        The type of error i.e. CITY, TITLE, STATS, etc
+    gymUid:
+        The unique id number identifying a gym
+    details:
+        Extra details to include when logging error
+    """
+
+    logger = logging.getLogger('pogoLog')
+
+    if details:
+        msg = '{} error - {}'.format(type.upper(), details)
+    else:
+        msg = '{} error'.format(type.upper())
+
+    imgName = '{:04}'.format(gymUid)
+    logger.debug(msg, extra={'image': imgName})
