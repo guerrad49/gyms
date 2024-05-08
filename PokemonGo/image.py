@@ -11,13 +11,13 @@ to text extraction.
 
 import os
 import re
+from typing import Optional
 
 import cv2
 import numpy as np
 import pytesseract
 
-from typing import Optional
-
+from .utils import log_error
 from .exceptions import UnsupportedPhoneModel, InputError
 
 
@@ -116,11 +116,17 @@ class BadgeImage:
         return text.strip().lower()
 
 
-    def get_gym_activity(self) -> dict:
+    def get_gym_activity(self, uid: int) -> dict:
         """
         Extract badge stats from image. Crops the portion containing
         the badge statistics under:
             VICTORIES | TIME DEFENDED | TREATS
+
+        Parameters
+        ----------
+        uid:
+            The unique id number identifying a gym
+            (Used for logging error)
         
         Returns
         -------
@@ -141,7 +147,7 @@ class BadgeImage:
         match = re.search(TOTAL_ACTIVITY_RE, text)
         if match is None:
             # manually enter image stats
-            # TODO: log the error
+            log_error('STATS', uid, details=text)
             prompt = 'Enter STATS for `{}`:\t'.format(self.path)
             inText = input(prompt).strip()
             match  = re.search(TOTAL_ACTIVITY_RE, inText)
