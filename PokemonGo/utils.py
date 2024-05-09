@@ -9,7 +9,6 @@ from .exceptions import InvalidEnvironment
 
 
 SIMILARITY_MIN = 0.9
-LOG_PATH = 'subfiles/pogo.log'
 
 
 def are_similar(x: str, y: str) -> bool:
@@ -51,10 +50,11 @@ def load_env() -> None:
         raise FileNotFoundError
     
     os.environ['SHEET_NAME'] = config['SHEET_NAME']
-    os.environ['EMAIL'] = config['EMAIL']
-    os.environ['KEY_PATH'] = keyfile
-    os.environ['DOWNLOADS'] = os.path.join(os.getenv('HOME'), 'Downloads')
-    os.environ['BADGES'] = os.path.join(topDir, 'badges')
+    os.environ['EMAIL']      = config['EMAIL']
+    os.environ['KEY_PATH']   = keyfile
+    os.environ['LOGGER']     = os.path.join(subfiles, config['LOG_FILE'])
+    os.environ['DOWNLOADS']  = os.path.join(os.getenv('HOME'), 'Downloads')
+    os.environ['BADGES']     = os.path.join(topDir, 'badges')
 
 
 def get_queue() -> list:
@@ -84,7 +84,7 @@ def set_logger() -> None:
     pogoFormat = '%(asctime)s   %(levelname)6s: %(image)s   %(message)s'
     logger = logging.getLogger('pogoLog')
     logging.basicConfig(
-        filename = LOG_PATH, 
+        filename = os.environ['LOGGER'], 
         format   = pogoFormat, 
         datefmt  = '%Y-%m-%d %H:%M:%S', 
         level    = logging.DEBUG
@@ -103,8 +103,13 @@ def log_error(type: str, gymUid: int, details: Optional[str] = '') -> None:
         The unique id number identifying a gym
     details:
         Extra details to include when logging error
+    
+    See Also
+    --------
+    utils.set_logger
     """
 
+    # logger name must match that in `set_logger`
     logger = logging.getLogger('pogoLog')
 
     if details:
