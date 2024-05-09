@@ -23,7 +23,7 @@ import gspread
 import numpy as np
 import pandas as pd
 
-from .utils import are_similar
+from .utils import are_similar, log_error
 from .gym import GoldGym
 from .exceptions import InputError
 
@@ -104,14 +104,23 @@ class GoogleSheet:
             matches = df[df['title']
                     .apply(lambda x: are_similar(x, title))
                     ]
-            # TODO: If no matches are similar, it's possible matches
-            # still returns empty. Fix this with manual input and
-            # log the error.
-            title = matches.iat[0,1]   # true title
         
-        # check with user when multiple matches
+        # still no similar titles require user input
+        if matches.shape[0] == 0:
+            log_error('TITLE', uid)   # TODO: fix this
+            prompt = 'Enter correct TITLE for `{}`:\t'.format(title)
+            inText = input(prompt).strip()
+            matches = df[df['title']
+                .apply(lambda x: are_similar(x, inText))
+                ]
+            if matches.shape[0] == 0:
+                raise InputError
+
+        title = matches.iat[0,1]   # true title
+        
+        # multiple matches
         if matches.shape[0] > 1:
-            columns  = ['title','latlon','city','state']
+            columns  = ['title', 'latlon', 'city', 'state']
             prompt   = 'Duplicates found.\n'
             prompt  += matches[columns].to_string()
             prompt  += '\nEnter correct INDEX:\t'
