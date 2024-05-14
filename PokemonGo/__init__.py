@@ -3,6 +3,6 @@
 __version__ = "0.1.0"
 __author__ = "David Guerra"
 
-from .google_sheet import GoogleSheet
-from .image import BadgeImage
+from .sheet import GymSheet
+from .image import GymBadge
 from .gym import GoldGym
