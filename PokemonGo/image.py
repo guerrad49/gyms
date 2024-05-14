@@ -2,7 +2,7 @@
 PokemonGo.image
 ---------------
 
-This module contains BadgeImage class for reading values from
+This module contains GymBadge class for reading values from
 a PokemonGo image badge in PNG format. Preprocessing with
 optimal values depending on iPhone models are implemented prior
 to text extraction.
@@ -37,7 +37,7 @@ TOTAL_ACTIVITY_RE = re.compile(r"""
     """, re.X|re.S)
 
 
-class BadgeImage:
+class GymBadge:
     """
     An instance of this class used for extracting text from
     an image.
@@ -45,7 +45,7 @@ class BadgeImage:
     Examples
     --------
     Requires valid relative or full path.
-    >>> img = BadgeImage('/badges/IMG_0001.PNG')
+    >>> img = GymBadge('/badges/IMG_0001.PNG')
     """
     
     def __init__(self, path: str) -> None:
@@ -102,7 +102,7 @@ class BadgeImage:
 
         See Also
         --------
-        BadgeImage.get_text
+        GymBadge.get_text
         """
 
         titleCrop = self.image[
@@ -134,7 +134,7 @@ class BadgeImage:
 
         See Also
         --------
-        BadgeImage.get_text
+        GymBadge.get_text
         """
 
         activityCrop = self.image[
@@ -177,8 +177,8 @@ class BadgeImage:
 
         See Also
         --------
-        BadgeImage.get_title
-        BadgeImage.get_gym_activity
+        GymBadge.get_title
+        GymBadge.get_gym_activity
         """
 
         if image is None:
@@ -211,4 +211,4 @@ class BadgeImage:
         os.rename(self.path, newPath)
         self.path = newPath   # update image location
 
-        print('INFO - BadgeImage successfully relocated.')
+        print('INFO - GymBadge successfully relocated.')
