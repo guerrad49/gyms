@@ -3,19 +3,19 @@ import unittest.mock
 
 import pytest
 
-from PokemonGo.image import BadgeImage
+from PokemonGo.image import GymBadge
 from PokemonGo.exceptions import UnsupportedPhoneModel
 
 
 class ImageTests(unittest.TestCase):
     def setUp(self):
-        self.im01 = BadgeImage('tests/images/IMG_0001.PNG')
-        self.im02 = BadgeImage('tests/images/IMG_1000.PNG')
-        self.im03 = BadgeImage('tests/images/IMG_1190.PNG')
+        self.im01 = GymBadge('tests/images/IMG_0001.PNG')
+        self.im02 = GymBadge('tests/images/IMG_1000.PNG')
+        self.im03 = GymBadge('tests/images/IMG_1190.PNG')
 
     #==========================================================================
     def test_empty_instance(self):
-        self.assertRaises(TypeError, BadgeImage)
+        self.assertRaises(TypeError, GymBadge)
 
     #==========================================================================
     def test_image_ise(self):
@@ -29,7 +29,7 @@ class ImageTests(unittest.TestCase):
 
     def test_image_unsupported(self):
         path = 'tests/images/SHAKA.PNG'
-        self.assertRaises(UnsupportedPhoneModel, BadgeImage, path)
+        self.assertRaises(UnsupportedPhoneModel, GymBadge, path)
 
     #==========================================================================
     def test_title(self):
@@ -38,7 +38,7 @@ class ImageTests(unittest.TestCase):
     #==========================================================================
     def test_activity(self):
         self.assertEqual(
-            self.im02.get_gym_activity(), 
+            self.im02.get_gym_activity(uid=1000), 
             {'victories':18, 'days':25, 'hours':18, 'minutes':1, 'treats':9}
             )
 
