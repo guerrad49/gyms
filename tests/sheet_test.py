@@ -3,19 +3,19 @@ import unittest.mock
 
 import pytest
 
-from PokemonGo.google_sheet import GoogleSheet
+from PokemonGo.sheet import GymSheet
 
 
 class SheetTests(unittest.TestCase):
     def setUp(self):
         key = 'subfiles/pogo_gyms_314413.json'
         name = 'gym_data'
-        self.gs = GoogleSheet(key, name)
+        self.gs = GymSheet(key, name)
 
     #==========================================================================
     @pytest.mark.order(1)
     def test_empty_instance(self):
-        self.assertRaises(TypeError, GoogleSheet)
+        self.assertRaises(TypeError, GymSheet)
 
     #==========================================================================
     @pytest.mark.order(2)
@@ -25,18 +25,16 @@ class SheetTests(unittest.TestCase):
     @pytest.mark.order(3)
     def test_find_exact(self):
         # searching over processed
-        self.assertEqual(
-            self.gs.find('fish sculpture', new=False),
-            ('fish sculpture', 12)
-        )
+        ans = self.gs.find('fish sculpture', uid=1140, new=False)
+        self.assertEqual(ans, ('fish sculpture', 12))
 
     @pytest.mark.order(4)
     def test_find_similar(self):
-        """Title is misspelled. User accepts correction."""
+        """Title is read incorrectly. User accepts correction."""
 
         # mock up user response
         unittest.mock.builtins.input = lambda _: "y"
-        ans = self.gs.find('fish scu1pture', new=False)
+        ans = self.gs.find('fish scu1pture', uid=1140, new=False)
         self.assertEqual(ans, ('fish sculpture', 12))
 
     @pytest.mark.order(5)
@@ -45,7 +43,7 @@ class SheetTests(unittest.TestCase):
 
         # mock up user response
         unittest.mock.builtins.input = lambda _: "588"
-        ans = self.gs.find('morris canal marker', new=False)
+        ans = self.gs.find('morris canal marker', uid=1147, new=False)
         self.assertEqual(ans, ('morris canal marker', 588))
 
 if __name__ == '__main__':
