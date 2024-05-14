@@ -6,7 +6,7 @@ import sys
 import argparse
 
 from PokemonGo import utils
-from PokemonGo import GoogleSheet, BadgeImage, GoldGym
+from PokemonGo import GymSheet, GymBadge, GoldGym
 
 
 #===============================FUNCTIONS=====================================
@@ -38,7 +38,7 @@ if __name__ == '__main__':
     if len(queue) == 0:
         sys.exit('---Processor ended---\n')
 
-    gs = GoogleSheet(os.environ['KEY_PATH'], os.environ['SHEET_NAME'])
+    gs = GymSheet(os.environ['KEY_PATH'], os.environ['SHEET_NAME'])
 
     nextId = gs.processed['image'].max() + 1
     ids = range(nextId, nextId + len(queue))
@@ -46,10 +46,10 @@ if __name__ == '__main__':
     print('\nINFO - Begin scanning process.\n')
 
     for id, path in zip(ids, queue):
-        img = BadgeImage(path)
+        img = GymBadge(path)
         imgData = img.get_title() | img.get_gym_activity(id)   # python3.9+
 
-        titleFromDf, ridx = gs.find(imgData['title'], gs.unprocessed)
+        titleFromDf, ridx = gs.find(imgData['title'], id)
         imgData['title'] = titleFromDf
 
         coords = gs.unprocessed.at[ridx,'latlon']            
