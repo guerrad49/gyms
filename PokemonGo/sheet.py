@@ -1,42 +1,38 @@
 """
-PokemonGo.google_sheet
+PokemonGo.sheet
 ----------------------
 
-This module contains the GoogleSheet class which extends 
-the `gspread` library for our specific purposes. Data from 
-Google Sheets is accessed locally as pd.DataFrames. The 
-methods used as motivation for this class are:
-    1. self.find
-    2. self.write_row
-
-All connections to Google are handled automatically.
+This module contains the GymSheet class which extends the 
+`gspread` package to manage a Google sheet containing PokemonGo 
+data. Data from Google sheet is accessed as pandas.DataFrames.
 
 See Also
 --------
 gspread
+README - instructions on how to generate json key
 """
 
 
 from typing import Optional
 
-import gspread
 import numpy as np
 import pandas as pd
+from gspread import service_account
 
-from .utils import are_similar, log_error
 from .gym import GoldGym
 from .exceptions import InputError
+from .utils import are_similar, log_error
 
 
-class GoogleSheet:
+class GymSheet:
     """
-    An instance of this class handles access to a Google Sheet.
+    An instance of this class handles access to a Google sheet.
     
     Examples
     --------
     >>> # instance w/ required parameters
-    >>> myKey = 'path/to/json/key'    # valid path
-    >>> gs = GoogleSheet(myKey, 'my_sheet_name')
+    >>> myKey = 'path/to/json/key'
+    >>> gs = GymSheet(myKey, 'my_sheet_name')
     """
     
     def __init__(self, keyPath: str, sheetName: str) -> None:
@@ -58,7 +54,7 @@ class GoogleSheet:
         This method is only called at initialization.
         """
 
-        client     = gspread.service_account(keyPath)
+        client     = service_account(keyPath)
         self.sheet = client.open(sheetName).sheet1
         records    = self.sheet.get_all_records()
         df         = pd.DataFrame(records)
@@ -72,7 +68,8 @@ class GoogleSheet:
     def find(
             self, 
             title: str, 
-            new: Optional[bool] = True
+            uid:   int, 
+            new:   Optional[bool] = True
             ) -> tuple[str, int]:
         """
         Locates title within database and corrects title if necessary.
@@ -81,8 +78,11 @@ class GoogleSheet:
         ----------
         title:
             The title to locate
+        uid:
+            The unique id number identifying a GoldGym
+            (Used for logging error)
         new:
-            The truth value whether title corresponds to new Gym
+            The truth value whether title corresponds to new GoldGym
 
         Returns
         -------
@@ -107,14 +107,7 @@ class GoogleSheet:
         
         # still no similar titles require user input
         if matches.shape[0] == 0:
-            log_error('TITLE', uid)   # TODO: fix this
-            prompt = 'Enter correct TITLE for `{}`:\t'.format(title)
-            inText = input(prompt).strip()
-            matches = df[df['title']
-                .apply(lambda x: are_similar(x, inText))
-                ]
-            if matches.shape[0] == 0:
-                raise InputError
+            matches = self._find_from_input(title, uid, df)
 
         title = matches.iat[0,1]   # true title
         
@@ -131,6 +124,39 @@ class GoogleSheet:
             rowNum = matches.index[0]
         
         return title, rowNum
+
+
+    def _find_from_input(
+            self, 
+            title: str, 
+            uid:   int, 
+            df:    pd.DataFrame
+            ) -> pd.DataFrame:
+        """
+        Helper method to GymSheet.find relying on user input.
+        
+        Parameters
+        ----------
+        df:
+            The DataFrame to search in
+
+        Returns
+        -------
+        matches:
+            The DataFrame with all title matches
+        """
+        
+        log_error('TITLE', uid)
+        prompt = 'Enter correct TITLE for `{}`:\t'.format(title)
+        inText = input(prompt).strip()
+        matches = df[df['title']
+            .apply(lambda x: are_similar(x, inText))
+            ]
+        
+        if matches.shape[0] == 0:
+            raise InputError
+        
+        return matches
 
 
     def write_row(self, rowNum: int, gymObj: GoldGym) -> None:
