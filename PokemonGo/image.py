@@ -154,7 +154,7 @@ class GymBadge:
             if match is None:
                 raise InputError
         
-        d = match.groupdict()
+        d = match.groupdict(default=0)
         return {k:int(v) for k,v in d.items()}
     
 
