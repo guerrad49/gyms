@@ -21,11 +21,10 @@ from typing import Optional, Any
 
 from geopy.geocoders import Nominatim
 
-from .utils import log_error
 from .exceptions import ArgumentError
 
 
-HRS_IN_DAY = 24
+HRS_IN_DAY  = 24
 MINS_IN_DAY = 1400
 LONG_TERM_DEFENDING = 100   # in days
 
@@ -41,12 +40,13 @@ class GoldGym:
     >>> 
     >>> # instance w/ all optional parameters
     >>> bb = GoldGym(uid=2,
-    ...     title='sydney opera house', victories=100,
-    ...     days=10, hours=7, minutes=20, treats=500)
+    ...     title='sydney opera house', model='i15', 
+    ...     victories=100, days=10, hours=7,
+    ...     minutes=20, treats=500)
     >>> 
     >>> # instance w/ unpacking dictionary of parameters
     >>> params = {
-    ...     'title': '大阪城', 'victories': 246, 
+    ...     'title': '大阪城', model='i11', 'victories': 246, 
     ...     'days': 2, 'hours': 3, 'minutes': 40, 'treats': 369
     ...     }
     >>> cc = GoldGym(uid=3, **params)
@@ -56,6 +56,7 @@ class GoldGym:
         self, 
         uid:       int,
         title:     Optional[str] = None,
+        model:     Optional[str] = None,
         victories: Optional[int] = 0,
         days:      Optional[int] = 0,
         hours:     Optional[int] = 0,
@@ -64,6 +65,7 @@ class GoldGym:
         ) -> None:
         self.uid       = self._checkint(uid)
         self.title     = title
+        self.model     = model
         self.style     = None
         self.victories = self._checkint(victories)
         self.days      = self._checkint(days)
@@ -71,6 +73,7 @@ class GoldGym:
         self.minutes   = self._checkint(minutes)
         self.defended  = 0
         self.treats    = self._checkint(treats)
+        self.errors    = list()
         
         """
         Parameters
@@ -89,6 +92,8 @@ class GoldGym:
             The number of additional minutes defending a gym
         treats:
             The number of treats fed at a gym
+        errors:
+            The list of processing errors
         """
     
     def _checkint(self, x: Any) -> int:
@@ -133,6 +138,10 @@ class GoldGym:
         """
         Compute total time defended from time attributes. 
         Default is 0.
+
+        Exceptions
+        ----------
+        AttributeError if missing required attributes
         """
 
         total = self.days + self.hours / HRS_IN_DAY \
@@ -143,14 +152,17 @@ class GoldGym:
 
     def set_style(self) -> None:
         """
-        Determine gym style based on number of days defended. 
-        Default style is `gold`.
+        Determine gym style based on number of days defended.
+
+        Exceptions
+        ----------
+        AttributeError if missing 'days' attribute
         """
 
-        if self.days >= LONG_TERM_DEFENDING:
-            self.style = '100+ days'
-        else:
+        if self.days < LONG_TERM_DEFENDING:
             self.style = 'gold'
+        else:
+            self.style = '100+ days'
 
 
     def set_address(self, latlon: str, email: str) -> None:
@@ -163,13 +175,17 @@ class GoldGym:
             The known coordinates in `lat,long` format
         email:
             The user's email required by third party ToS
+        
+        See Also
+        --------
+        geopy.geocoders.Nominatim
         """
 
-        self.latlon  = latlon
-        geolocator   = Nominatim(user_agent=email)
+        self.latlon = latlon
+        geolocator  = Nominatim(user_agent=email)
 
         # proactive format clean up
-        coords_list  = [x.strip() for x in self.latlon.split(',')]
+        coords_list = [x.strip() for x in self.latlon.split(',')]
 
         location     = geolocator.reverse(coords_list)
         self.address = location.raw['address']   # dictionary
@@ -180,13 +196,14 @@ class GoldGym:
         Set the gym's city from address.
         Note: May require user interface.
         
-        See Also
+        Required
         --------
         GoldGym.set_address
-        """
 
-        if 'address' not in vars(self):
-            raise AttributeError('address was not set')
+        Exceptions
+        ----------
+        AttributeError is missing 'address' attribute
+        """
 
         city = None
 
@@ -197,7 +214,7 @@ class GoldGym:
         
         # manually enter city name
         if not city:
-            log_error('CITY', self.uid)
+            self.errors.append('CITY')
             prompt = 'Enter CITY for `{}`:\t'.format(self.latlon)
             city   = input(prompt).strip()
 
@@ -209,18 +226,20 @@ class GoldGym:
         Set the gym's county from address.
         Note: May require user interface.
         
-        See Also
+        Required
         --------
         GoldGym.set_address
+
+        Exceptions
+        ----------
+        AttributeError if missing 'address' attribute
         """
 
         try:
             county = self.address['county']
-        except AttributeError:
-            raise AttributeError('address was not set')
         except KeyError:
             # manually enter county name
-            log_error('COUNTY', self.uid)
+            self.errors.append('COUNTY')
             prompt = 'Enter COUNTY for `{}`:\t'.format(self.latlon)
             county = input(prompt).strip()
         
@@ -233,18 +252,20 @@ class GoldGym:
         Set the gym's state from address.
         Note: May require user interface.
         
-        See Also
+        Required
         --------
         GoldGym.set_address
+
+        Exceptions
+        ----------
+        AttributeError if missing 'address' attribute
         """
 
         try:
            state = self.address['state']
-        except AttributeError:
-            raise AttributeError('address was not set')
         except KeyError:
             # manually enter state name (RARE)
-            log_error('STATE', self.uid)
+            self.errors.append('STATE')
             prompt = 'Enter STATE for `{}`:\t'.format(self.latlon)
             state = input(prompt).strip()
 
