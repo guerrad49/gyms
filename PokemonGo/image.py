@@ -17,7 +17,6 @@ import cv2
 import numpy as np
 import pytesseract
 
-from .utils import log_error
 from .exceptions import UnsupportedPhoneModel, InputError
 
 
@@ -58,10 +57,11 @@ class GymBadge:
 
         self.path  = path
         self.image = cv2.imread(path)
-        self.set_processing_params()
+        self.set_model_params()
+        self.errors = list()
 
     
-    def set_processing_params(self) -> None:
+    def set_model_params(self) -> None:
         """
         Determine iPhone model parameters from image dimensions.
         Cannot be used on unknown models.
@@ -70,18 +70,21 @@ class GymBadge:
         dimensions = self.image.shape[:2]
         
         if dimensions == iSE_DIMENSIONS:
+            self.model      = 'iSE'
             self.scale      = 1.75
             self.titleStart = 50
             self.titleEnd   = 140
             self.activStart = 975
             self.activEnd   = 1100
         elif dimensions == i11_DIMENSIONS:
+            self.model      = 'i11'
             self.scale      = 1.5
             self.titleStart = 60
             self.titleEnd   = 150
             self.activStart = 1075
             self.activEnd   = 1225
         elif dimensions == i15_DIMENSIONS:
+            self.model      = 'i15'
             self.scale      = 1
             self.titleStart = 110
             self.titleEnd   = 210
@@ -116,17 +119,11 @@ class GymBadge:
         return text.strip().lower()
 
 
-    def get_gym_activity(self, uid: int) -> dict:
+    def get_gym_activity(self) -> dict:
         """
         Extract badge stats from image. Crops the portion containing
         the badge statistics under:
             VICTORIES | TIME DEFENDED | TREATS
-
-        Parameters
-        ----------
-        uid:
-            The unique id number identifying a gym
-            (Used for logging error)
         
         Returns
         -------
@@ -146,8 +143,8 @@ class GymBadge:
 
         match = re.search(TOTAL_ACTIVITY_RE, text)
         if match is None:
+            self.errors.append('STATS')
             # manually enter image stats
-            log_error('STATS', uid, details=text)
             prompt = 'Enter STATS for `{}`:\t'.format(self.path)
             inText = input(prompt).strip()
             match  = re.search(TOTAL_ACTIVITY_RE, inText)
@@ -164,7 +161,7 @@ class GymBadge:
             ) -> str:
         """
         Retrieves all text from an image array. If optional parameter
-        isn't set, default is self.image attribute.
+        isn't set, default is `image` attribute.
 
         Parameters
         ----------
@@ -173,7 +170,7 @@ class GymBadge:
 
         Returns
         -------
-            The text string for entire image
+        The text string for entire image
 
         See Also
         --------
