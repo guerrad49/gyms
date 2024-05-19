@@ -21,7 +21,7 @@ from gspread import service_account
 
 from .gym import GoldGym
 from .exceptions import InputError
-from .utils import are_similar, log_error
+from .utils import are_similar
 
 
 class GymSheet:
@@ -46,6 +46,7 @@ class GymSheet:
         """
 
         self._retrieve_data(keyPath, sheetName)
+        self.errors = list()
 
 
     def _retrieve_data(self, keyPath: str, sheetName: str) -> None:
@@ -68,7 +69,6 @@ class GymSheet:
     def find(
             self, 
             title: str, 
-            uid:   int, 
             new:   Optional[bool] = True
             ) -> tuple[str, int]:
         """
@@ -78,9 +78,6 @@ class GymSheet:
         ----------
         title:
             The title to locate
-        uid:
-            The unique id number identifying a GoldGym
-            (Used for logging error)
         new:
             The truth value whether title corresponds to new GoldGym
 
@@ -98,6 +95,7 @@ class GymSheet:
             df = self.processed
         
         matches = df[df['title'] == title]
+        self.errors.clear()
 
         # check similar titles when no exact match
         if matches.shape[0] == 0:
@@ -107,7 +105,7 @@ class GymSheet:
         
         # still no similar titles require user input
         if matches.shape[0] == 0:
-            matches = self._find_from_input(title, uid, df)
+            matches = self._find_from_input(title, df)
 
         title = matches.iat[0,1]   # true title
         
@@ -129,7 +127,6 @@ class GymSheet:
     def _find_from_input(
             self, 
             title: str, 
-            uid:   int, 
             df:    pd.DataFrame
             ) -> pd.DataFrame:
         """
@@ -146,7 +143,7 @@ class GymSheet:
             The DataFrame with all title matches
         """
         
-        log_error('TITLE', uid)
+        self.errors.append('TITLE')
         prompt = 'Enter correct TITLE for `{}`:\t'.format(title)
         inText = input(prompt).strip()
         matches = df[df['title']
@@ -181,11 +178,11 @@ class GymSheet:
         # get Gym values needed
         newVals = [
             v for k,v in vars(gymObj).items()
-            if k != 'address'
+            if k not in ['address', 'errors']
         ]
 
-        # newVals -> A:M is one-to-one mapping
-        oldRow = 'A{0}:M{0}'.format(rowNum)
+        # newVals -> A:N is one-to-one mapping
+        oldRow = 'A{0}:N{0}'.format(rowNum)
         self.sheet.update(oldRow, [newVals])
         
         print('Writing to row {}'.format(rowNum))
