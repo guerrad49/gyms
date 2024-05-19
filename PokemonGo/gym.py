@@ -82,6 +82,8 @@ class GoldGym:
             The unique id number identifying a gym
         title:
             The gym title
+        model:
+            The phone-source model
         victories:
             The number of victories at a gym
         days:
@@ -212,9 +214,9 @@ class GoldGym:
             if option in self.address.keys():
                 city = self.address[option]
         
-        # manually enter city name
         if not city:
             self.errors.append('CITY')
+            # manually enter city name
             prompt = 'Enter CITY for `{}`:\t'.format(self.latlon)
             city   = input(prompt).strip()
 
@@ -238,8 +240,8 @@ class GoldGym:
         try:
             county = self.address['county']
         except KeyError:
-            # manually enter county name
             self.errors.append('COUNTY')
+            # manually enter county name
             prompt = 'Enter COUNTY for `{}`:\t'.format(self.latlon)
             county = input(prompt).strip()
         
@@ -264,8 +266,8 @@ class GoldGym:
         try:
            state = self.address['state']
         except KeyError:
-            # manually enter state name (RARE)
             self.errors.append('STATE')
+            # manually enter state name (RARE)
             prompt = 'Enter STATE for `{}`:\t'.format(self.latlon)
             state = input(prompt).strip()
 
