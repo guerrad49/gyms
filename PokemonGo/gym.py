@@ -25,7 +25,7 @@ from .exceptions import ArgumentError
 
 
 HRS_IN_DAY  = 24
-MINS_IN_DAY = 1400
+MINS_IN_DAY = 1440
 LONG_TERM_DEFENDING = 100   # in days
 
 
