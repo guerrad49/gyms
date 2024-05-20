@@ -19,7 +19,7 @@ class GymTests(unittest.TestCase):
             'minutes': 10,
             'treats': 1_000
             }
-        self.msg = GoldGym(uid=2, **self.msgOptParams)
+        self.MSG = GoldGym(uid=2, **self.msgOptParams)
         self.msgLatLon = '40.75067515347, -73.99339578809'
         self.email = 'lindamcmahon4u@gmail.com'   # valid email
 
@@ -53,8 +53,8 @@ class GymTests(unittest.TestCase):
     #==========================================================================
     @pytest.mark.order(6)
     def test_style(self):
-        self.msg.set_style()
-        self.assertEqual(self.msg.style, 'gold')
+        self.MSG.set_style()
+        self.assertEqual(self.MSG.style, 'gold')
 
     @pytest.mark.order(7)
     def test_style_long_term(self):
@@ -107,16 +107,16 @@ class GymTests(unittest.TestCase):
     #==========================================================================
     @pytest.mark.order(13)
     def test_city_before_address(self):
-        self.assertRaises(AttributeError, self.msg.set_city)
+        self.assertRaises(AttributeError, self.MSG.set_city)
 
     @pytest.mark.order(14)
     def test_city(self):
-        self.msg.set_address(self.msgLatLon, self.email)
-        self.msg.set_city()
-        self.assertEqual(self.msg.city, 'city of new york')
+        self.MSG.set_address(self.msgLatLon, self.email)
+        self.MSG.set_city()
+        self.assertEqual(self.MSG.city, 'city of new york')
 
     @pytest.mark.order(15)
-    def test_city_remote(self):
+    def test_city_w_input(self):
         # use remote location (Wilderness State Park, MI)
         self.basicGym.set_address(
             '45.74127368988, -84.92224540493',
@@ -125,15 +125,15 @@ class GymTests(unittest.TestCase):
         # mock up user response
         unittest.mock.builtins.input = lambda _: "carp lake"
         self.basicGym.set_city()
-        self.assertEqual(self.basicGym.city, 'carp lake')
+        self.assertEqual(self.basicGym.errors[0], 'CITY')
 
     #==========================================================================
     @pytest.mark.order(16)
     def test_county_strip(self):
         # the word `county` should not appear
-        self.msg.set_address(self.msgLatLon, self.email)
-        self.msg.set_county()
-        self.assertNotEqual(self.msg.county, 'new york county')
+        self.MSG.set_address(self.msgLatLon, self.email)
+        self.MSG.set_county()
+        self.assertNotEqual(self.MSG.county, 'new york county')
 
 
 if __name__ == '__main__':
