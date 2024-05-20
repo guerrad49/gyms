@@ -1,6 +1,5 @@
 import os
 import logging
-from typing import Optional
 from difflib import SequenceMatcher
 
 from dotenv import dotenv_values
@@ -20,7 +19,7 @@ def are_similar(x: str, y: str) -> bool:
     likeness = SequenceMatcher(None, x, y).ratio()
 
     if likeness >= SIMILARITY_MIN:
-        prompt = 'Found similar match \'{}\'. Accept? (y/n)\t'.format(x)
+        prompt = 'Found similar match \'{}\'. Accept? (y/n)   '.format(x)
         if input(prompt) == 'y':
             return True
         else:
@@ -70,10 +69,10 @@ def get_queue() -> list:
     if len(queue) == 0:
         print('INFO - No images found.\n')
     else:
-        prompt  = 'INFO - Found the following images:\n'
-        prompt += '\n'.join(queue)
-        prompt += '\n'
-        print(prompt)
+        msg  = 'INFO - Found the following images:\n'
+        msg += '\n'.join(queue)
+        msg += '\n'
+        print(msg)
     
     return queue
 
@@ -81,41 +80,35 @@ def get_queue() -> list:
 def set_logger() -> None:
     """Set configurations for package logger."""
     
-    pogoFormat = '%(asctime)s   %(levelname)6s: %(image)s   %(message)s'
-    logger = logging.getLogger('pogoLog')
+    logger = logging.getLogger(__name__)
     logging.basicConfig(
         filename = os.environ['LOGGER'], 
-        format   = pogoFormat, 
+        format   = '%(asctime)s   %(message)s', 
         datefmt  = '%Y-%m-%d %H:%M:%S', 
-        level    = logging.DEBUG
         )
 
 
-def log_error(type: str, gymUid: int, details: Optional[str] = '') -> None:
+def log_entry(gymUid: int, errors: list) -> None:
     """
-    Helper function for logging errors within modules.
+    Compose message body and create entry in log.
 
     Parameters
     ----------
-    type:
-        The type of error i.e. CITY, TITLE, STATS, etc
     gymUid:
         The unique id number identifying a gym
-    details:
-        Extra details to include when logging error
+    errors:
+        The list of errors i.e. CITY, TITLE, STATS, etc
     
     See Also
     --------
     utils.set_logger
     """
 
-    # logger name must match that in `set_logger`
-    logger = logging.getLogger('pogoLog')
+    logger = logging.getLogger(__name__)
 
-    if details:
-        msg = '{} error - {}'.format(type.upper(), details)
-    else:
-        msg = '{} error'.format(type.upper())
+    msg = 'ID: {:04}'.format(gymUid)
+    if errors:
+        errStr = ', '.join(errors)
+        msg += '   Errors: {}'.format(errStr)
 
-    imgName = '{:04}'.format(gymUid)
-    logger.debug(msg, extra={'image': imgName})
+    logger.warning(msg)
