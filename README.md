@@ -25,7 +25,7 @@ This is arguably the most tedious section.
 * Follow the process outlined for [GSPREAD](https://docs.gspread.org/en/latest/oauth2.html) in order to enable API Access to your Google Sheet. After understanding and completing the process, the created json file should be saved in the `subfiles` directory.
 
 #### 3. Environment Variables
-Open `subfiles/variables.env` and update each value. <br>
+Open `subfiles/variables_template.env`, update each value and rename the file to `variables.env`. *Not renaming this file will raise errors when running main script.*<br>
 
 ***
 
