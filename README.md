@@ -9,12 +9,12 @@ This package aims to aid PokemonGo players build and maintain a database of gyms
 ### Pre-Requisites
 Clone this repo and follow the steps below.
 
-##### 1. SetUp
+#### 1. SetUp
 Run the executable `setup.sh` which will
 * Create a **badges** directory and
 * Create a virtual environment with all the required python libraries.
 
-##### 2. Google Sheet
+#### 2. Google Sheet
 This is arguably the most tedious section.
 * The user must create a Google Sheet with the following headers:
     
@@ -26,6 +26,32 @@ This is arguably the most tedious section.
 
 #### 3. Environment Variables
 Open `requirements/variables_template.env`, update each value and rename the file to `variables.env`. *Not renaming this file will raise errors when running main script.*<br>
+
+The directory structure should now look like below.
+```
+.
+├── .venv
+├── badges
+├── PokemonGo
+│    ├── __init__.py
+│    ├── exceptions.py
+│    ├── gym.py
+│    ├── image.py
+│    ├── sheet.py
+│    └── utils.py
+├── requirements
+│    ├── requirements.txt
+│    ├── variables.env
+│    └── /your/json/key/.json
+├── tests
+│    ├── __init__.py
+│    ├── gym_test.py
+│    ├── image_test.py
+│    └── images
+├── main.py
+├── README.md
+└── setup.sh
+```
 
 ***
 
