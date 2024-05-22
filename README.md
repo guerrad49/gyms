@@ -22,16 +22,16 @@ This is arguably the most tedious section.
 
 * The `main.py` script will populate all BUT two fields. The fields *title* and *coordinates* must be **manually** populated for each row/gym. The *title* should use all lowercase and *coordinates* should be comma-separated with no space in between i.e. 40.758186,-73.985585. (Suggestion: Access **Ingress** maps for coordinates.)
 
-* Follow the process outlined for [GSPREAD](https://docs.gspread.org/en/latest/oauth2.html) in order to enable API Access to your Google Sheet. After understanding and completing the process, the created json file should be saved in the `subfiles` directory.
+* Follow the process outlined for [GSPREAD](https://docs.gspread.org/en/latest/oauth2.html) in order to enable API Access to your Google Sheet. After understanding and completing the process, the created json file should be saved in the `requirements` directory.
 
 #### 3. Environment Variables
-Open `subfiles/variables_template.env`, update each value and rename the file to `variables.env`. *Not renaming this file will raise errors when running main script.*<br>
+Open `requirements/variables_template.env`, update each value and rename the file to `variables.env`. *Not renaming this file will raise errors when running main script.*<br>
 
 ***
 
 ### The Process
 
-Each image is scanned from `Downloads` directory and extracts image properties, badge statistics, and location details. During each iteration, if reading errors occur, the user is prompted for manual input. The corresponding row in user's Google Sheet and a local log (under `subfiles`) are both updated. Each image is relocated to `badges` directory using the naming convention `IMG_####.PNG`. Lastly, the Google Sheet is sorted by geolocation.
+Each image is scanned from `Downloads` directory and extracts image properties, badge statistics, and location details. During each iteration, if reading errors occur, the user is prompted for manual input. The corresponding row in user's Google Sheet and a local log (under `requirements`) are both updated. Each image is relocated to `badges` directory using the naming convention `IMG_####.PNG`. Lastly, the Google Sheet is sorted by geolocation.
 
 ***
 

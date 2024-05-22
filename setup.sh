@@ -17,9 +17,9 @@ echo ""
 sleep 1   # wait
 
 echo "Installing the following libraries:"
-cat subfiles/requirements.txt
+cat requirements/requirements.txt
 echo ""
-python3 -m pip install -r subfiles/requirements.txt
+python3 -m pip install -r requirements/requirements.txt
 echo ""
 sleep 1   # wait
 
