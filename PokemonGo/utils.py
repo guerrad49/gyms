@@ -35,23 +35,23 @@ def load_env() -> None:
     packageDir = os.path.dirname(__file__)
     topDir     = os.path.dirname(packageDir)
 
-    subfiles = os.path.join(topDir, 'subfiles')
+    requirements = os.path.join(topDir, 'requirements')
 
     # load environment
-    envPath = os.path.join(subfiles, 'variables.env')
+    envPath = os.path.join(requirements, 'variables.env')
     config = dotenv_values(envPath)
     if '' in config.values() or None in config.values():
         raise InvalidEnvironment
     
     # check json key file exits
-    keyfile = os.path.join(subfiles, config['JSON_KEY'])
+    keyfile = os.path.join(requirements, config['JSON_KEY'])
     if not os.path.isfile(keyfile):
         raise FileNotFoundError
     
     os.environ['SHEET_NAME'] = config['SHEET_NAME']
     os.environ['EMAIL']      = config['EMAIL']
     os.environ['KEY_PATH']   = keyfile
-    os.environ['LOGGER']     = os.path.join(subfiles, config['LOG_FILE'])
+    os.environ['LOGGER']     = os.path.join(requirements, config['LOG_FILE'])
     os.environ['DOWNLOADS']  = os.path.join(os.getenv('HOME'), 'Downloads')
     os.environ['BADGES']     = os.path.join(topDir, 'badges')
 
