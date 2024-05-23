@@ -9,8 +9,11 @@ from PokemonGo.exceptions import UnsupportedPhoneModel, InputError
 
 class ImageTests(unittest.TestCase):
     def setUp(self):
+        # II W Tower
         self.im01 = GymBadge('tests/images/IMG_0001.PNG')
+        # St Thomas More Church
         self.im02 = GymBadge('tests/images/IMG_0002.PNG')
+        # Tulip Mural
         self.im03 = GymBadge('tests/images/IMG_0003.PNG')
 
     #==========================================================================
@@ -51,15 +54,17 @@ class ImageTests(unittest.TestCase):
 
     @pytest.mark.order(8)
     def test_activity_input_good(self):
-        # mock up user response
+        # preload a valid user response
         unittest.mock.builtins.input = lambda _: "11 19d 5h 1m 17"
+        # reading error happens
         self.im02.get_gym_activity()
         self.assertEqual(self.im02.errors[0], 'STATS')
     
     @pytest.mark.order(9)
     def test_activity_input_bad(self):
-        # mock up user response
+        # preload an invalid user response
         unittest.mock.builtins.input = lambda _: "11 19d th 1m 17"
+        # exception is raised
         self.assertRaises(
             InputError, self.im02.get_gym_activity
             )
