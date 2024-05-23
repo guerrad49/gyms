@@ -1,3 +1,9 @@
+"""
+This module contains custom exceptions to be raised within the
+PokemonGo package.
+"""
+
+
 class InvalidEnvironment(Exception):
     def __str__(self) -> str:
         msg = 'one or more environment variables not set'

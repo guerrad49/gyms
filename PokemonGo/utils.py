@@ -1,3 +1,10 @@
+"""
+This module provides helper functions for PokemonGo.sheet and main.py.
+Aside from `are_similar`, all others are optional depending if the 
+user decides to rewrite or use a new `main.py` script altogether.
+"""
+
+
 import os
 import logging
 from difflib import SequenceMatcher
@@ -7,7 +14,7 @@ from dotenv import dotenv_values
 from .exceptions import InvalidEnvironment
 
 
-SIMILARITY_MIN = 0.9
+SIMILARITY_MIN = 0.9   # 90 percent
 
 
 def are_similar(x: str, y: str) -> bool:
