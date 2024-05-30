@@ -199,7 +199,7 @@ class GymSheet:
         byCounty = (cols.index('county') + 1, 'asc')
         byState  = (cols.index('state')  + 1, 'asc')
         
-        rowLen = 'A2:M{}'.format(self.sheet.row_count)
+        rowLen = 'A2:N{}'.format(self.sheet.row_count)
 
         # sort by state, then county, then city
         self.sheet.sort(
