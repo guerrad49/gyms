@@ -42,7 +42,7 @@ if __name__ == '__main__':
 
     gs = GymSheet(os.environ['KEY_PATH'], os.environ['SHEET_NAME'])
 
-    nextId = gs.processed['image'].max() + 1
+    nextId = gs.processed['uid'].max() + 1
     ids = range(nextId, nextId + len(queue))
 
     print('\nINFO - Begin scanning process.\n')
@@ -52,10 +52,10 @@ if __name__ == '__main__':
         imgData  = {'title': img.get_title(), 'model': img.model}
         imgData |= img.get_gym_activity()   # python3.9+
 
-        titleFromDf, ridx = gs.find(imgData['title'], False)
+        titleFromDf, ridx = gs.find(imgData['title'])
         imgData['title'] = titleFromDf
 
-        coords = gs.processed.at[ridx,'latlon']
+        coords = gs.unprocessed.at[ridx,'latlon']
 
         gym = GoldGym(id, **imgData)
         gym.set_time_defended()
@@ -71,5 +71,5 @@ if __name__ == '__main__':
         errors = gs.errors + img.errors + gym.errors
         utils.log_entry(id, errors)
         print()
- 
+
     gs.geo_sort()
