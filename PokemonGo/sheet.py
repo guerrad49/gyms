@@ -198,12 +198,13 @@ class GymSheet:
         byCity   = (cols.index('city')   + 1, 'asc')
         byCounty = (cols.index('county') + 1, 'asc')
         byState  = (cols.index('state')  + 1, 'asc')
+        byTitle  = (cols.index('title')  + 1, 'asc')
         
         rowLen = 'A2:N{}'.format(self.sheet.row_count)
 
         # sort by state, then county, then city
         self.sheet.sort(
-            byState, byCounty, byCity, 
+            byState, byCounty, byCity, byTitle, 
             range=rowLen
             )
         print('INFO - Sorting complete.\n')
