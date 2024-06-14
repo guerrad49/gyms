@@ -13,3 +13,8 @@ class InputError(Exception):
     def __str__(self) -> str:
         msg = 'invalid input provided by user'
         return msg
+    
+class TitleNotFound(Exception):
+    def __str__(self) -> str:
+        msg = 'title not found; search possibly over incorrect DataFrame'
+        return msg
