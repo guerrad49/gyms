@@ -20,7 +20,7 @@ import pandas as pd
 from gspread import service_account
 
 from .gym import GoldGym
-from .exceptions import InputError
+from .exceptions import InputError, TitleNotFound
 from .utils import are_similar
 
 
@@ -87,6 +87,10 @@ class GymSheet:
             The true title in database
         rowNum:
             The row index for title match
+        
+        Exceptions
+        ----------
+        InputError if user input is incorrect
         """
 
         if new:
@@ -141,6 +145,11 @@ class GymSheet:
         -------
         matches:
             The DataFrame with all title matches
+        
+        Exceptions
+        ----------
+        TitleNotFound if searching over wrong dataframe
+        InputError if user input is incorrect
         """
         
         self.errors.append('TITLE')
@@ -151,6 +160,12 @@ class GymSheet:
             ]
         
         if matches.shape[0] == 0:
+            # final check
+            prompt = 'Is `{}` correct? (y/n)   '.format(inText)
+            response = input(prompt).strip()
+            if response == 'y':
+                self.errors.pop()   # not a reading error
+                raise TitleNotFound
             raise InputError
         
         return matches
