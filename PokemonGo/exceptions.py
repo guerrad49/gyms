@@ -13,8 +13,3 @@ class InputError(Exception):
     def __str__(self) -> str:
         msg = 'invalid input provided by user'
         return msg
-
-class ArgumentError(Exception):
-    def __str__(self) -> str:
-        msg = 'argument must be <int> type'
-        return msg

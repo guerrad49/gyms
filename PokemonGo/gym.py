@@ -21,8 +21,6 @@ from typing import Optional, Any
 
 from geopy.geocoders import Nominatim
 
-from .exceptions import ArgumentError
-
 
 HRS_IN_DAY  = 24
 MINS_IN_DAY = 1440
@@ -102,7 +100,8 @@ class GoldGym:
         """Check argument type for <int>."""
 
         if not isinstance(x, int):
-            raise ArgumentError
+            errMsg = 'argument "{}" must be <int> type'.format(x)
+            raise TypeError(errMsg)
         return x
     
 
