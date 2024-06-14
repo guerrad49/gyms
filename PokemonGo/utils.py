@@ -11,8 +11,6 @@ from difflib import SequenceMatcher
 
 from dotenv import dotenv_values
 
-from .exceptions import InvalidEnvironment
-
 
 SIMILARITY_MIN = 0.9   # 90 percent
 
@@ -48,7 +46,7 @@ def load_env() -> None:
     envPath = os.path.join(requirements, 'variables.env')
     config = dotenv_values(envPath)
     if '' in config.values() or None in config.values():
-        raise InvalidEnvironment
+        raise EnvironmentError
     
     # check json key file exits
     keyfile = os.path.join(requirements, config['JSON_KEY'])
