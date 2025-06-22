@@ -7,12 +7,20 @@ user decides to rewrite or use a new `main.py` script altogether.
 
 import os
 import logging
+import argparse
 from difflib import SequenceMatcher
 
 from dotenv import dotenv_values
 
 
 SIMILARITY_MIN = 0.9   # 90 percent
+
+
+def parse_args():
+    p = argparse.ArgumentParser()
+    p.add_argument('-u', '--updates', action='store_true', 
+        help='process gym updates only')
+    return p.parse_args()
 
 
 def are_similar(x: str, y: str) -> bool:
@@ -62,7 +70,7 @@ def load_env() -> None:
 
 
 def get_queue() -> list:
-    """Returns True when successfully populated a queue to scan"""
+    """Returns queue of images to scan."""
 
     downloads = os.environ['DOWNLOADS']
     queue = [
