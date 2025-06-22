@@ -6,11 +6,13 @@ import sys
 
 from PokemonGo import (
     GymSheet, GymBadge, GoldGym, 
-    utils, exceptions
+    utils
 )
 
 
 if __name__ == '__main__':
+    args = utils.parse_args()
+
     utils.load_env()
     utils.set_logger()
     
@@ -20,47 +22,48 @@ if __name__ == '__main__':
 
     gs = GymSheet(os.environ['KEY_PATH'], os.environ['SHEET_NAME'])
 
-    nextId = gs.processed['uid'].max() + 1
-    ids = list(range(nextId, nextId + len(queue)))
+    # Consider finding nextId within while loop.
+    if not args.updates:
+        nextId = gs.processed['uid'].max() + 1
+        ids = list(range(nextId, nextId + len(queue)))
 
     print('\nINFO - Begin scanning process.\n')
 
-    while ids:
-    # for id, path in zip(ids, queue):
-        path = queue.pop(0)
+    for i,path in enumerate(queue):
         img = GymBadge(path)
         imgData  = {'title': img.get_title(), 'model': img.model}
         imgData |= img.get_gym_activity()   # python3.9+
 
-        try:
-            # new gym
+        # new gym
+        if not args.updates:
             titleFromDf, ridx = gs.find(imgData['title'], True)
             coords = gs.unprocessed.at[ridx, 'latlon']
-            id = ids.pop(-1)
-        except exceptions.TitleNotFound:
-            # update old gym
+            id = ids.pop(0)
+        else:  # update old gym
             titleFromDf, ridx = gs.find(imgData['title'], False)
             coords = gs.processed.at[ridx, 'latlon']
             id = gs.processed.at[ridx, 'uid']
-            ids.pop()
         
         imgData['title'] = titleFromDf
 
         gym = GoldGym(id, **imgData)
         gym.set_time_defended()
         gym.set_style()
-        gym.set_address(coords, os.environ['EMAIL'])
-        gym.set_city()
-        gym.set_county()
-        gym.set_state()
+        
+        # fields needed for new gyms
+        if not args.updates:
+            gym.set_address(coords, os.environ['EMAIL'])
+            gym.set_city()
+            gym.set_county()
+            gym.set_state()
 
-        pdb.set_trace()
+        # pdb.set_trace()
 
-    #     img.to_storage(os.environ['BADGES'], id)
+        img.to_storage(os.environ['BADGES'], id)
  
-    #     gs.write_row(ridx, gym)
-    #     errors = gs.errors + img.errors + gym.errors
-    #     utils.log_entry(id, errors)
-    #     print()
+        gs.write_row(ridx, gym)
+        errors = gs.errors + img.errors + gym.errors
+        utils.log_entry(id, errors)
+        print()
 
-    # gs.geo_sort()
+    gs.geo_sort()
