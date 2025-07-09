@@ -20,7 +20,7 @@ This is arguably the most tedious section.
     
     > uid | title | model | style | victories | defended | treats | coordinates | city | county | state
 
-* The `scan.py` script will populate all BUT two fields. The fields *title* and *coordinates* must be **manually** populated for each row/gym. The *title* should use all lowercase and *coordinates* should be comma-separated with no space in between i.e. 40.758186,-73.985585. (Suggestion: Access **Ingress** maps for coordinates.)
+* The `scanner.py` script will populate all BUT two fields. The fields *title* and *coordinates* must be **manually** populated for each row/gym. The *title* should use all lowercase and *coordinates* should be comma-separated with no space in between i.e. 40.758186,-73.985585. (Suggestion: Access **Ingress** maps for coordinates.)
 
 * Follow the process outlined for [GSPREAD](https://docs.gspread.org/en/latest/oauth2.html) in order to enable API Access to your Google Sheet. After understanding and completing the process, the created json file should be saved in the `requirements` directory.
 
@@ -49,7 +49,7 @@ The directory structure should now look like below.
 │    ├── image_test.py
 │    └── images
 ├── README.md
-├── scan.py
+├── scanner.py
 └── setup.sh
 ```
 
@@ -68,14 +68,14 @@ Each image is scanned from ~/Downloads<sup>*</sup> directory and extracts image 
 Activate the virtual environment and run the script.
 ```
 $ source .venv/bin/activate
-$ (.venv) ./scan.py
+$ (.venv) ./scanner.py
 ```
 
 Consider having your Google spreadsheet open to see the automation.
 
 Lastly, there is an option to update badge statistics. To do so, run as follows:
 ```
-$ (.venv) ./scan.py -u
+$ (.venv) ./scanner.py -u
 ```
 However, note that this option **only** handles updates. Hence, scanning new badges in this option will not work.
 
