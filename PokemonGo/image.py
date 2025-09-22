@@ -47,15 +47,20 @@ class GymBadge:
     >>> img = GymBadge('/badges/IMG_0001.PNG')
     """
     
-    def __init__(self, path: str) -> None:
+    def __init__(self, path: str, verbose: bool) -> None:
         """
         Parameters
         ----------
         path:
             The file path to the image
+        verbose:
+            Print progress statements
         """
 
-        self.path  = path
+        self.path = path
+        self.verbose = verbose
+        if self.verbose:
+            print('Scanning  {}'.format(path))
         self.image = cv2.imread(path)
         self.set_model_params()
         self.errors = list()
@@ -113,7 +118,7 @@ class GymBadge:
             0 : self.image.shape[1]            # left : right
             ]
         text = self.get_text(titleCrop)
-        text = text.replace("’", "'")   # proactive error handling
+        text = text.replace("’", "'")   # Proactive error handling.
         text = text.replace('\n', ' ')
 
         return text.strip().lower()
@@ -139,12 +144,12 @@ class GymBadge:
             0 : self.image.shape[1]            # left : right
             ]
         text = self.get_text(activityCrop)
-        text = text.replace('O', '0')   # proactive error handling
+        text = text.replace('O', '0')   # Proactive error handling.
 
         match = re.search(TOTAL_ACTIVITY_RE, text)
         if match is None:
             self.errors.append('STATS')
-            # manually enter image stats
+            # Manually enter image stats.
             prompt = 'Enter STATS for `{}`:\t'.format(self.path)
             inText = input(prompt).strip()
             match  = re.search(TOTAL_ACTIVITY_RE, inText)
@@ -181,7 +186,7 @@ class GymBadge:
         if image is None:
             image = self.image
 
-        # pre-processing        
+        # Pre-processing.
         height = round(image.shape[0] * self.scale)
         width  = round(image.shape[1] * self.scale)
         resized   = cv2.resize(image, (width, height))
@@ -206,6 +211,7 @@ class GymBadge:
         newName = 'IMG_{:04d}.PNG'.format(new_id)
         newPath = os.path.join(directory, newName)
         os.rename(self.path, newPath)
-        self.path = newPath   # update image location
+        self.path = newPath   # Update image location.
 
-        print('INFO - GymBadge successfully relocated.')
+        if self.verbose:
+            print('INFO - GymBadge successfully relocated.')

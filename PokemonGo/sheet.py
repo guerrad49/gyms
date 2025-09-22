@@ -35,7 +35,11 @@ class GymSheet:
     >>> gs = GymSheet(myKey, 'my_sheet_name')
     """
     
-    def __init__(self, keyPath: str, sheetName: str) -> None:
+    def __init__(
+            self, 
+            keyPath: str, 
+            sheetName: str, 
+            verbose: bool) -> None:
         """
         Parameters
         ----------
@@ -43,8 +47,11 @@ class GymSheet:
             The path to json key required for API access
         sheetName: 
             The name of Google Sheet with data
+        verbose:
+            Print progress statements
         """
 
+        self.verbose = verbose
         self._retrieve_data(keyPath, sheetName)
         self.errors = list()
 
@@ -63,7 +70,9 @@ class GymSheet:
 
         self.processed   = df[df['uid'] != '']
         self.unprocessed = df[df['uid'] == '']
-        print('INFO - Data extract successful.')
+
+        if self.verbose:
+            print('INFO - Google sheet data extracted successfully.')
     
     
     def find(
@@ -101,19 +110,19 @@ class GymSheet:
         matches = df[df['title'] == title]
         self.errors.clear()
 
-        # check similar titles when no exact match
+        # Check similar titles when no exact match.
         if matches.shape[0] == 0:
             matches = df[df['title']
                     .apply(lambda x: are_similar(x, title))
                     ]
         
-        # still no similar titles require user input
+        # Still no similar titles require user input.
         if matches.shape[0] == 0:
             matches = self._find_from_input(title, df)
 
         title = matches.iat[0,1]   # true title
         
-        # multiple matches
+        # Multiple matches.
         if matches.shape[0] > 1:
             columns  = ['title', 'latlon', 'city', 'state']
             prompt   = 'Duplicates found.\n'
@@ -153,14 +162,15 @@ class GymSheet:
         """
         
         self.errors.append('TITLE')
-        prompt = 'Enter correct TITLE for `{}`:\t'.format(title)
+        prompt = 'Enter correct TITLE for `{}`:\n'
+        prompt += '   '.format(title)
         inText = input(prompt).strip()
         matches = df[df['title']
             .apply(lambda x: are_similar(x, inText))
             ]
         
         if matches.shape[0] == 0:
-            # final check
+            # Final check.
             prompt = 'Is `{}` correct? (y/n)   '.format(inText)
             response = input(prompt).strip()
             if response == 'y':
@@ -190,18 +200,19 @@ class GymSheet:
         >>> gs.write_row(10, someGym)
         """
 
-        # get Gym values needed
+        # Get Gym values needed.
         newVals = [
             v for k,v in vars(gymObj).items()
             if k not in ['address', 'errors']
         ]
 
-        # newVals -> A:N is one-to-one mapping
+        # newVals -> A:N is one-to-one mapping.
         oldRow = 'A{0}:N{0}'.format(rowNum)
         self.sheet.update(oldRow, [newVals])
         
-        print('Writing to row {}'.format(rowNum))
-        print(newVals)
+        if self.verbose:
+            print('Writing to row {}'.format(rowNum))
+            print(newVals)
 
 
     def geo_sort(self) -> None:
@@ -217,9 +228,11 @@ class GymSheet:
         
         rowLen = 'A2:N{}'.format(self.sheet.row_count)
 
-        # sort by state, then county, then city
+        # Sort by state, then county, then city.
         self.sheet.sort(
             byState, byCounty, byCity, byTitle, 
             range=rowLen
             )
-        print('INFO - Sorting complete.\n')
+        
+        if self.verbose:
+            print('INFO - Sorting complete.\n')

@@ -24,7 +24,7 @@ from geopy.geocoders import Nominatim
 
 HRS_IN_DAY  = 24
 MINS_IN_DAY = 1440
-LONG_TERM_DEFENDING = 100   # in days
+LONG_TERM_DEFENDING = 100   # In days.
 
 
 class GoldGym:
@@ -185,11 +185,11 @@ class GoldGym:
         self.latlon = latlon
         geolocator  = Nominatim(user_agent=email)
 
-        # proactive format clean up
+        # Proactive format clean up.
         coords_list = [x.strip() for x in self.latlon.split(',')]
 
         location     = geolocator.reverse(coords_list)
-        self.address = location.raw['address']   # dictionary
+        self.address = location.raw['address']   # Dictionary.
 
 
     def set_city(self) -> None:
@@ -208,14 +208,14 @@ class GoldGym:
 
         city = None
 
-        # common options address dictionary
+        # Common options address dictionary.
         for option in ['city','town','village','township']:
             if option in self.address.keys():
                 city = self.address[option]
         
         if not city:
             self.errors.append('CITY')
-            # manually enter city name
+            # Manually enter city name.
             prompt = 'Enter CITY for `{}`:\t'.format(self.latlon)
             city   = input(prompt).strip()
 
@@ -240,7 +240,7 @@ class GoldGym:
             county = self.address['county']
         except KeyError:
             self.errors.append('COUNTY')
-            # manually enter county name
+            # Manually enter county name.
             prompt = 'Enter COUNTY for `{}`:\t'.format(self.latlon)
             county = input(prompt).strip()
         
@@ -266,7 +266,7 @@ class GoldGym:
            state = self.address['state']
         except KeyError:
             self.errors.append('STATE')
-            # manually enter state name (RARE)
+            # Manually enter state name (RARE).
             prompt = 'Enter STATE for `{}`:\t'.format(self.latlon)
             state = input(prompt).strip()
 

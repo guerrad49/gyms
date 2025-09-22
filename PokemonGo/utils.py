@@ -6,6 +6,7 @@ user decides to rewrite or use a new `main.py` script altogether.
 
 
 import os
+import sys
 import logging
 import argparse
 from difflib import SequenceMatcher
@@ -20,6 +21,8 @@ def parse_args():
     p = argparse.ArgumentParser()
     p.add_argument('-u', '--updates', action='store_true', 
         help='process gym updates only')
+    p.add_argument('-v', '--verbose', action='store_true', 
+        help='print progress statements')
     return p.parse_args()
 
 
@@ -69,7 +72,7 @@ def load_env() -> None:
     os.environ['BADGES']     = os.path.join(topDir, 'badges')
 
 
-def get_queue() -> list:
+def get_queue(verbose: bool) -> list:
     """Returns queue of images to scan."""
 
     downloads = os.environ['DOWNLOADS']
@@ -79,13 +82,11 @@ def get_queue() -> list:
         if x.endswith('.PNG')
         ]
 
-    if len(queue) == 0:
-        print('INFO - No images found.\n')
-    else:
-        msg  = 'INFO - Found the following images:\n'
-        msg += '\n'.join(queue)
-        msg += '\n'
-        print(msg)
+    qLen = len(queue)
+    if verbose:
+        print('INFO - Found {} image(s).'.format(qLen))
+    if qLen == 0:
+        sys.exit('---Processor ended---\n')
     
     return queue
 
