@@ -4,7 +4,7 @@ import pdb
 import os
 
 from PokemonGo import (
-    GymSheet, GymBadge, GoldGym, 
+    GymSheet, BadgeImage, GoldGym, 
     utils
 )
 
@@ -23,7 +23,7 @@ if __name__ == '__main__':
         args.verbose
         )
 
-    # Consider finding nextId within while loop.
+    # Generate list of unique ids to assign images.
     if not args.updates:
         nextId = gs.processed['uid'].max() + 1
         ids = list(range(nextId, nextId + len(queue)))
@@ -33,40 +33,72 @@ if __name__ == '__main__':
 
     # Begin scanning process.
     for i,path in enumerate(queue):
-        img = GymBadge(path)
-        imgData  = {'title': img.get_title(), 'model': img.model}
-        imgData |= img.get_gym_activity()   # python3.9+
+        img = BadgeImage(path, args.verbose)
+
+        # ========== Begin title extract ==========
+        # Single line titles (most cases).
+        img.set_title_crop()
+        titleTxt = img.get_text(region='title')
+        titleFound, rowIndex = gs.find(titleTxt)
+
+        # Two line titles.
+        if rowIndex == -1:
+            img.set_title_crop(offset=40)
+            img.soften_title_overlay()
+            titleTxt = img.get_text(region='title')
+            titleFound, rowIndex = gs.find(titleTxt)
+
+            # Multi-line titles require user input for now.
+            if rowIndex == -1:
+                titleFound, rowIndex = gs.find_from_input()
+
+        # ========== End title extract ==========
 
         # New gym.
         if not args.updates:
-            titleFromDf, ridx = gs.find(imgData['title'], True)
-            coords = gs.unprocessed.at[ridx, 'latlon']
+            coords = gs.unprocessed.at[rowIndex, 'latlon']
             id = ids.pop(0)
         else:  # Update old gym.
-            titleFromDf, ridx = gs.find(imgData['title'], False)
-            coords = gs.processed.at[ridx, 'latlon']
-            id = gs.processed.at[ridx, 'uid']
-        
-        imgData['title'] = titleFromDf
+            coords = gs.processed.at[rowIndex, 'latlon']
+            id = gs.processed.at[rowIndex, 'uid']
 
-        gym = GoldGym(id, **imgData)
+        # Initialize data that will be passed to google sheet.
+        rowDict = {
+            'uid': id, 
+            'title': titleFound, 
+            'model': img.params.model
+            }
+        
+        # Extract all activity data from badge image.
+        img.set_activity_crop()
+        activityTxt = img.get_text(region='activity')
+        gymActivity = img.get_activity_vals(activityTxt)
+
+        # Initialize gym with extracted data.
+        gym = GoldGym(title=titleFound, **gymActivity)
         gym.set_time_defended()
         gym.set_style()
         
-        # Fields needed for new gyms.
+        # Obtain location fields for new gyms.
         if not args.updates:
             gym.set_address(coords, os.environ['EMAIL'])
             gym.set_city()
             gym.set_county()
             gym.set_state()
 
-        # pdb.set_trace()
+        rowDict |= vars(gym)   # python3.9+
+        del rowDict['address']
+        del rowDict['errors']
 
-        img.to_storage(os.environ['BADGES'], id)
- 
-        gs.write_row(ridx, gym)
+        # Write data to spreadsheet.
+        gs.write_row(rowIndex, rowDict)
+
+        # Log any/all errors.
         errors = gs.errors + img.errors + gym.errors
         utils.log_entry(id, errors)
+
+        # Move image to storage once everything else succeeded.
+        img.to_storage(os.environ['BADGES'], id)
         print()
 
     gs.geo_sort()
