@@ -2,10 +2,11 @@
 PokemonGo.image
 ---------------
 
-This module contains GymBadge class for reading values from
-a PokemonGo image badge in PNG format. Preprocessing with
-optimal values depending on iPhone models are implemented prior
-to text extraction.
+This module contains BadgeImage class for reading values from
+a screenshot of a PokemonGo badge in PNG format. Phone model-
+specific parameters are set in ModelParams class. These 
+parameters help in extracting text from regions of an image 
+by first preprocessing.
 """
 
 
@@ -20,60 +21,29 @@ import pytesseract
 from .exceptions import UnsupportedPhoneModel, InputError
 
 
+TOTAL_ACTIVITY_RE = re.compile(r"""
+    (?P<victories>\d{1,4})           # Victories.
+    [\n\ ]+
+    ((?P<days>\d{1,3})d[\ ]?)?       # Days.
+    ((?P<hours>\d{1,2})h[\ ]?)?      # Hours.
+    ((?P<minutes>\d{1,2})m[\ ]?)?    # Minutes.
+    ((\d{1,2})s)?                    # Seconds (very rare).
+    [\n\ ]+
+    (?P<treats>\d{1,4})              # Treats.
+    """, re.X|re.S)
+
 iSE_DIMENSIONS = (1334, 750)
 i11_DIMENSIONS = (1792, 828)
 i15_DIMENSIONS = (2556, 1179)
 
-TOTAL_ACTIVITY_RE = re.compile(r"""
-    (?P<victories>\d{1,4})           # victories
-    [\n\ ]+
-    ((?P<days>\d{1,3})d[\ ]?)?       # days
-    ((?P<hours>\d{1,2})h[\ ]?)?      # hours
-    ((?P<minutes>\d{1,2})m[\ ]?)?    # minutes
-    ((\d{1,2})s)?                    # seconds (very rare)
-    [\n\ ]+
-    (?P<treats>\d{1,4})              # treats
-    """, re.X|re.S)
 
-
-class GymBadge:
+class ModelParams:
     """
-    An instance of this class used for extracting text from
-    an image.
-
-    Examples
-    --------
-    Requires valid relative or full path.
-    >>> img = GymBadge('/badges/IMG_0001.PNG')
+    Class to store model dependent parameters for a BadgeImage.
+    Cannot be used on unknown models.
     """
-    
-    def __init__(self, path: str, verbose: bool) -> None:
-        """
-        Parameters
-        ----------
-        path:
-            The file path to the image
-        verbose:
-            Print progress statements
-        """
 
-        self.path = path
-        self.verbose = verbose
-        if self.verbose:
-            print('Scanning  {}'.format(path))
-        self.image = cv2.imread(path)
-        self.set_model_params()
-        self.errors = list()
-
-    
-    def set_model_params(self) -> None:
-        """
-        Determine iPhone model parameters from image dimensions.
-        Cannot be used on unknown models.
-        """
-
-        dimensions = self.image.shape[:2]
-        
+    def __init__(self, dimensions):
         if dimensions == iSE_DIMENSIONS:
             self.model      = 'iSE'
             self.scale      = 1.75
@@ -98,61 +68,146 @@ class GymBadge:
         else:
             raise UnsupportedPhoneModel
 
+        
+class BadgeImage:
+    """
+    Class for processing a gym badge's image and extracting text.
 
-    def get_title(self) -> str:
+    Examples
+    --------
+    >>> # Use relative path.
+    >>> img = BadgeImage('badges/IMG_0001.PNG')
+    """
+    
+    def __init__(
+            self, 
+            path: str, 
+            verbose: Optional[bool] = False
+            ) -> None:
         """
-        Extract badge title from image. Crops the portion containing
-        the badge title.
+        Parameters
+        ----------
+        path:
+            The file path to the image.
+        verbose:
+            Print progress statements.
+        """
+
+        self.path = path
+        self.verbose = verbose
+        if self.verbose:
+            print('Scanning  {}'.format(path))
+        self.image = cv2.imread(path)
+        self.params = ModelParams(self.image.shape[:2])
+        self.errors = list()
+
+
+    def set_title_crop(
+            self, 
+            offset: Optional[int] = 0
+            ) -> None:
+        """
+        Set the cropped image containing the badge title.
+
+        Parameters
+        ----------
+        offset:
+            The value to offset the title's vertical start.
+
+        Exceptions
+        ----------
+        IndexError if offset value is too large.
+        """
+
+        titleNorth = self.params.titleStart - offset
+        if titleNorth < 0:
+            raise IndexError("Excessive offset value")
+        
+        self.titleCrop = self.image[
+            titleNorth : self.params.titleEnd, 
+            0 : self.image.shape[1]
+            ]
+    
+
+    def soften_title_overlay(self) -> None:
+        """
+        Reconstruct title image by softening phone status from title 
+        using inpainting.
+
+        Exceptions
+        ----------
+        AttributeError if self.titleCrop is not initialized.
+        TypeError if self.titleCrop is not <np.ndarray> type.
+
+        See Also
+        -------
+        BadgeImage.set_title_crop
+        """
+
+        if not isinstance(self.titleCrop, np.ndarray):
+            msg  = 'argument "{}" '.format(self.titleCrop)
+            msg += 'must be <np.ndarray> type'
+            raise TypeError(msg)
+        
+        # Reconstruct darkest pixels i.e. the status bar.
+        lowerBound = np.array([0, 0, 0], dtype=np.uint8)
+        upperBound = np.array([100, 100, 100], dtype=np.uint8)
+        mask = cv2.inRange(self.titleCrop, lowerBound, upperBound)
+
+        kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
+        mask = cv2.dilate(mask, kernel, iterations=1)
+
+        self.titleCrop = cv2.inpaint(
+            self.titleCrop, mask, inpaintRadius=3, flags=cv2.INPAINT_TELEA
+            )
+    
+
+    def set_activity_crop(self) -> None:
+        """
+        Set the cropped image containing the badge activity section.
+        """
+
+        self.activityCrop = self.image[
+            self.params.activStart : self.params.activEnd, 
+            0 : self.image.shape[1]
+            ]
+
+
+    def get_activity_vals(
+            self, 
+            activityText: str
+            ) -> dict:
+        """
+        Compute badge statistics from extracted activity text.
+
+        Parameters
+        ----------
+        activityText:
+            The extracted text from the activity section.
         
         Returns
         -------
-        The title text string
+        The dictionary containing badge statistics.
+
+        Exceptions
+        ----------
+        InputError if regex search does not return match.
 
         See Also
         --------
-        GymBadge.get_text
+        BadgeImage.get_text
         """
 
-        titleCrop = self.image[
-            self.titleStart : self.titleEnd,   #  top : bottom
-            0 : self.image.shape[1]            # left : right
-            ]
-        text = self.get_text(titleCrop)
-        text = text.replace("’", "'")   # Proactive error handling.
-        text = text.replace('\n', ' ')
+        match = re.search(TOTAL_ACTIVITY_RE, activityText)
 
-        return text.strip().lower()
-
-
-    def get_gym_activity(self) -> dict:
-        """
-        Extract badge stats from image. Crops the portion containing
-        the badge statistics under:
-            VICTORIES | TIME DEFENDED | TREATS
-        
-        Returns
-        -------
-        The dictionary containing badge statistics
-
-        See Also
-        --------
-        GymBadge.get_text
-        """
-
-        activityCrop = self.image[
-            self.activStart : self.activEnd,   #  top : bottom
-            0 : self.image.shape[1]            # left : right
-            ]
-        text = self.get_text(activityCrop)
-        text = text.replace('O', '0')   # Proactive error handling.
-
-        match = re.search(TOTAL_ACTIVITY_RE, text)
         if match is None:
             self.errors.append('STATS')
             # Manually enter image stats.
             prompt = 'Enter STATS for `{}`:\t'.format(self.path)
-            inText = input(prompt).strip()
-            match  = re.search(TOTAL_ACTIVITY_RE, inText)
+            statsText = input(prompt).strip()
+            # Try matching our regex string again.
+            match  = re.search(TOTAL_ACTIVITY_RE, statsText)
+            # If no match still, raise error.
             if match is None:
                 raise InputError
         
@@ -162,56 +217,74 @@ class GymBadge:
 
     def get_text(
             self, 
-            image: Optional[np.ndarray] = None
+            region: str = 'all'
             ) -> str:
         """
-        Retrieves all text from an image array. If optional parameter
-        isn't set, default is `image` attribute.
+        Retrieves all text from image region.
 
         Parameters
         ----------
-        image: 
-            The array representing an image
-
+        region:
+            The image region ['all', 'title', 'activity'].
+        
         Returns
         -------
-        The text string for entire image
+        The extracted text string.
 
-        See Also
-        --------
-        GymBadge.get_title
-        GymBadge.get_gym_activity
+        Exceptions
+        ----------
+        AttributeError if region crop was not initialized.
         """
 
-        if image is None:
+        if region == 'all':
             image = self.image
+        elif region == 'title':
+            image = self.titleCrop
+        elif region == 'activity':
+            image = self.activityCrop
+        else:
+            print("Invalid region value")
+            return ''
 
         # Pre-processing.
-        height = round(image.shape[0] * self.scale)
-        width  = round(image.shape[1] * self.scale)
+        height = round(image.shape[0] * self.params.scale)
+        width  = round(image.shape[1] * self.params.scale)
         resized   = cv2.resize(image, (width, height))
         grayscale = cv2.cvtColor(resized, cv2.COLOR_BGR2GRAY)
         _, thresh = cv2.threshold(grayscale, 200, 230, cv2.THRESH_BINARY)
 
-        return pytesseract.image_to_string(thresh)
+        txt = pytesseract.image_to_string(thresh, lang="eng")
+
+        # Text cleanup.
+        txt = txt.replace("’", "'")
+        if region == 1:  # Title only.
+            txt = txt.replace('\n', ' ')
+        elif region == 2:  # Activity only.
+            txt = txt.replace('O', '0')
+
+        return txt.strip().lower()
         
     
-    def to_storage(self, directory: str, new_id: int) -> None:
+    def to_storage(
+            self, 
+            directory: str, 
+            newId: int
+            ) -> None:
         """
         Move image file to storage with a new id.
 
         Parameters
         ----------
         directory:
-            The path to storage directory
-        new_id:
-            The new base id used in renaming image
+            The path to storage directory.
+        newId:
+            The new base id used in renaming image.
         """
     
-        newName = 'IMG_{:04d}.PNG'.format(new_id)
+        newName = 'IMG_{:04d}.PNG'.format(newId)
         newPath = os.path.join(directory, newName)
         os.rename(self.path, newPath)
         self.path = newPath   # Update image location.
 
         if self.verbose:
-            print('INFO - GymBadge successfully relocated.')
+            print('INFO - BadgeImage successfully relocated.')

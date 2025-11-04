@@ -3,8 +3,9 @@ PokemonGo.sheet
 ----------------------
 
 This module contains the GymSheet class which extends the 
-`gspread` package to manage a Google sheet containing PokemonGo 
-data. Data from Google sheet is accessed as pandas.DataFrames.
+`gspread` package for PokemonGo data. In particular, the 
+GymSheet class aims to automate the process of writing 
+new information to a Google sheet.
 
 See Also
 --------
@@ -19,8 +20,7 @@ import numpy as np
 import pandas as pd
 from gspread import service_account
 
-from .gym import GoldGym
-from .exceptions import InputError, TitleNotFound
+from .exceptions import TitleNotFound
 from .utils import are_similar
 
 
@@ -39,16 +39,17 @@ class GymSheet:
             self, 
             keyPath: str, 
             sheetName: str, 
-            verbose: bool) -> None:
+            verbose: Optional[bool] = False
+            ) -> None:
         """
         Parameters
         ----------
         keyPath: 
-            The path to json key required for API access
+            The path to json key required for API access.
         sheetName: 
-            The name of Google Sheet with data
+            The name of Google Sheet with data.
         verbose:
-            Print progress statements
+            Print progress statements.
         """
 
         self.verbose = verbose
@@ -56,17 +57,25 @@ class GymSheet:
         self.errors = list()
 
 
-    def _retrieve_data(self, keyPath: str, sheetName: str) -> None:
+    def _retrieve_data(
+            self, 
+            keyPath: str, 
+            sheetName: str
+            ) -> None:
         """
         Partition sheet records to category dataframes.
         This method is only called at initialization.
+
+        See Also
+        --------
+        gspread.worksheet.Worksheet
         """
 
         client     = service_account(keyPath)
         self.sheet = client.open(sheetName).sheet1
         records    = self.sheet.get_all_records()
         df         = pd.DataFrame(records)
-        df.index   = np.arange(2, len(df) + 2)    # start at row 2
+        df.index   = np.arange(2, len(df) + 2)    # Start at row 2.
 
         self.processed   = df[df['uid'] != '']
         self.unprocessed = df[df['uid'] == '']
@@ -77,153 +86,150 @@ class GymSheet:
     
     def find(
             self, 
-            title: str, 
-            new:   Optional[bool] = True
+            inTitle: str, 
+            isUpdate: Optional[bool] = False
             ) -> tuple[str, int]:
         """
         Locates title within database and corrects title if necessary.
         
         Parameters
         ----------
-        title:
-            The title to locate
-        new:
-            The truth value whether title corresponds to new GoldGym
+        inTitle:
+            The title to locate.
+        isUpdate:
+            Specifies if inTitle's data is an update.
 
         Returns
         -------
-        title:
-            The true title in database
-        rowNum:
-            The row index for title match
+        outTitle:
+            The title from database.
+        rowIndex:
+            The row index for title.
         
         Exceptions
         ----------
-        InputError if user input is incorrect
+        TitleNotFound if title search unsuccessful.
         """
 
-        if new:
+        if not isUpdate:
             df = self.unprocessed
         else:
             df = self.processed
         
-        matches = df[df['title'] == title]
+        matches = df[df['title'] == inTitle]
         self.errors.clear()
 
         # Check similar titles when no exact match.
         if matches.shape[0] == 0:
             matches = df[df['title']
-                    .apply(lambda x: are_similar(x, title))
+                    .apply(lambda x: are_similar(x, inTitle))
                     ]
         
-        # Still no similar titles require user input.
-        if matches.shape[0] == 0:
-            matches = self._find_from_input(title, df)
+        # Default values to return.
+        outTitle = ''
+        rowIndex = -1
 
-        title = matches.iat[0,1]   # true title
-        
-        # Multiple matches.
-        if matches.shape[0] > 1:
-            columns  = ['title', 'latlon', 'city', 'state']
+        # Only one match.
+        if matches.shape[0] == 1:
+            outTitle = matches.iat[0,1]
+            rowIndex = matches.index[0]
+        elif matches.shape[0] > 1:  # Multiple matches.
+            outTitle = matches.iat[0,1]
+            columns  = ['title','latlon','city','state']
             prompt   = 'Duplicates found.\n'
             prompt  += matches[columns].to_string()
             prompt  += '\nEnter correct INDEX:\t'
-            rowNum   = int(input(prompt))
-            if rowNum not in matches.index:
-                raise InputError
-        else:
-            rowNum = matches.index[0]
+            rowIndex   = int(input(prompt))
+            if rowIndex not in matches.index:
+                raise TitleNotFound
+            
+        if rowIndex == -1:
+            self.errors.append('TITLE')
         
-        return title, rowNum
+        return outTitle, rowIndex
 
 
-    def _find_from_input(
+    def find_from_input(
             self, 
-            title: str, 
-            df:    pd.DataFrame
-            ) -> pd.DataFrame:
+            isUpdate: Optional[bool] = True
+            ) -> tuple[str, int]:
         """
         Helper method to GymSheet.find relying on user input.
         
         Parameters
         ----------
-        df:
-            The DataFrame to search in
+        isUpdate:
+            Specifies if inTitle's data is an update.
 
         Returns
         -------
-        matches:
-            The DataFrame with all title matches
+        outTitle:
+            The title from database.
+        rowIndex:
+            The row index for title.
         
         Exceptions
         ----------
-        TitleNotFound if searching over wrong dataframe
-        InputError if user input is incorrect
+        TitleNotFound if title search unsuccessful.
         """
         
-        self.errors.append('TITLE')
-        prompt = 'Enter correct TITLE for `{}`:\n'
-        prompt += '   '.format(title)
-        inText = input(prompt).strip()
-        matches = df[df['title']
-            .apply(lambda x: are_similar(x, inText))
-            ]
-        
-        if matches.shape[0] == 0:
-            # Final check.
-            prompt = 'Is `{}` correct? (y/n)   '.format(inText)
-            response = input(prompt).strip()
-            if response == 'y':
-                self.errors.pop()   # not a reading error
-                raise TitleNotFound
-            raise InputError
-        
-        return matches
+        prompt = 'Enter correct TITLE for badge:\n   '
+        title = input(prompt).strip()
+
+        outTitle, rowIndex = self.find(title, isUpdate=isUpdate)
+        if rowIndex == -1:
+            raise TitleNotFound
+
+        return outTitle, rowIndex
 
 
-    def write_row(self, rowNum: int, gymObj: GoldGym) -> None:
+    def write_row(
+            self, 
+            rowIndex: int, 
+            rowData: dict
+            ) -> None:
         """
-        Fill sheet row with new Gym values.
+        Fill sheet row with new values.
         
         Parameters
         ----------
-        rowNum:
-            The row number to write in google sheet
-        gymObj:
-            The Gym which values will be used
+        rowIndex:
+            The row index to write in google sheet.
+        rowData:
+            The row data as a dictionary.
 
-        Examples
+        See Also
         --------
-        >>> type(someGym)
-        <class 'PokemonGo.gym.GoldGym'>
-        >>> # write to row 10 in Google Sheet
-        >>> gs.write_row(10, someGym)
+        gspread.worksheet.Worksheet
         """
 
-        # Get Gym values needed.
-        newVals = [
-            v for k,v in vars(gymObj).items()
-            if k not in ['address', 'errors']
-        ]
+        # Get gym values needed.
+        rowValues = list(rowData.values())
 
-        # newVals -> A:N is one-to-one mapping.
-        oldRow = 'A{0}:N{0}'.format(rowNum)
-        self.sheet.update(oldRow, [newVals])
+        # rowValues -> A:N is one-to-one mapping.
+        oldRow = 'A{0}:N{0}'.format(rowIndex)
+        self.sheet.update(oldRow, [rowValues])
         
         if self.verbose:
-            print('Writing to row {}'.format(rowNum))
-            print(newVals)
+            print('Writing to row {}'.format(rowIndex))
+            print(rowValues)
 
 
     def geo_sort(self) -> None:
-        """Sort sheet contents geographically."""
+        """
+        Sort sheet contents geographically.
         
-        cols = self.sheet.row_values(1)   # column titles
+        See Also
+        --------
+        gspread.worksheet.Worksheet
+        """
+        
+        cols = self.sheet.row_values(1)   # Column titles.
 
         # (column index, 'ascending')
         byCity   = (cols.index('city')   + 1, 'asc')
         byCounty = (cols.index('county') + 1, 'asc')
-        byState  = (cols.index('state')  + 1, 'asc')
+        byState  = (cols.index('state')  + 1, 'asc') 
         byTitle  = (cols.index('title')  + 1, 'asc')
         
         rowLen = 'A2:N{}'.format(self.sheet.row_count)

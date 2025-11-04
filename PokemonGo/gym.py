@@ -2,162 +2,111 @@
 PokemonGo.gym
 -------------
 
-This module contains GoldGym class for compiling a gym's 
-data in one location such as:
-    1. Initial known gym values from database
-    2. Values read using PokemonGo.BadgeImage class
-    3. Methods which complete gym location values
-
-Once all gym values are set, the best use-case is to pass
-a GoldGym object to the `write_row` method of 
-PokemonGo.GoogleSheet class.
-
-It is also recommended the use of setter class methods 
-for safe-handling of class attributes.
+This module contains GoldGym class for compiling a PokemonGo 
+gym's data in one location. Manually set attributes are used 
+to automate setting other attributes. The setter methods 
+show use-cases for this process.
 """
 
 
-from typing import Optional, Any
+from typing import Optional
 
 from geopy.geocoders import Nominatim
 
 
 HRS_IN_DAY  = 24
 MINS_IN_DAY = 1440
-LONG_TERM_DEFENDING = 100   # In days.
+LONG_TERM_DEFENDING = 100   # Unit = days.
 
 
 class GoldGym:
     """
-    An instance of this class manages PokemonGo gym-related fields.
+    Class to manage PokemonGo gym-related attributes.
 
     Examples
     --------
-    >>> # instance w/ required parameter
-    >>> aa = GoldGym(1)
+    >>> # Instance w/o parameters.
+    >>> aa = GoldGym()
     >>> 
-    >>> # instance w/ all optional parameters
-    >>> bb = GoldGym(uid=2,
-    ...     title='sydney opera house', model='i15', 
+    >>> # Instance w/ all optional parameters.
+    >>> bb = GoldGym(title='sydney opera house', 
     ...     victories=100, days=10, hours=7,
     ...     minutes=20, treats=500)
     >>> 
-    >>> # instance w/ unpacking dictionary of parameters
+    >>> # Instance w/ unpacking dictionary of parameters.
     >>> params = {
-    ...     'title': '大阪城', model='i11', 'victories': 246, 
-    ...     'days': 2, 'hours': 3, 'minutes': 40, 'treats': 369
+    ...     'title': '大阪城', 'victories': 246, 'days': 2, 
+    ...     'hours': 3, 'minutes': 40, 'treats': 369
     ...     }
-    >>> cc = GoldGym(uid=3, **params)
+    >>> cc = GoldGym(**params)
     """
+
+    _intFields = {
+        "victories", "days", "hours", "minutes", "treats"
+        }
     
     def __init__(
         self, 
-        uid:       int,
-        title:     Optional[str] = None,
-        model:     Optional[str] = None,
+        title:     Optional[str] = '',
         victories: Optional[int] = 0,
         days:      Optional[int] = 0,
         hours:     Optional[int] = 0,
         minutes:   Optional[int] = 0,
         treats:    Optional[int] = 0
         ) -> None:
-        self.uid       = self._checkint(uid)
         self.title     = title
-        self.model     = model
         self.style     = None
-        self.victories = self._checkint(victories)
-        self.days      = self._checkint(days)
-        self.hours     = self._checkint(hours)
-        self.minutes   = self._checkint(minutes)
+        self.victories = victories
+        self.days      = days
+        self.hours     = hours
+        self.minutes   = minutes
         self.defended  = 0
-        self.treats    = self._checkint(treats)
+        self.treats    = treats
         self.errors    = list()
         
         """
         Parameters
         ----------
-        uid:
-            The unique id number identifying a gym
         title:
-            The gym title
-        model:
-            The phone-source model
+            The gym title.
         victories:
-            The number of victories at a gym
+            The number of victories at a gym.
         days:
-            The number of days defending a gym
+            The number of days defending a gym.
         hours:
-            The number of additional hours defending a gym
+            The number of additional hours defending a gym.
         minutes:
-            The number of additional minutes defending a gym
+            The number of additional minutes defending a gym.
         treats:
-            The number of treats fed at a gym
+            The number of treats fed at a gym.
         errors:
-            The list of processing errors
+            The list of processing errors.
         """
-    
-    def _checkint(self, x: Any) -> int:
-        """Check argument type for <int>."""
 
-        if not isinstance(x, int):
-            errMsg = 'argument "{}" must be <int> type'.format(x)
-            raise TypeError(errMsg)
-        return x
-    
+    def __setattr__(self, name, value):
+        """Check specific attributes for typing."""
 
-    def set_victories(self, x: int) -> None:
-        """Safe setting function for victories."""
-
-        self.victories = self._checkint(x)
-    
-
-    def set_days(self, x: int) -> None:
-        """Safe setting function for days."""
-        
-        self.days = self._checkint(x)
-    
-
-    def set_hours(self, x: int) -> None:
-        """Safe setting function for hours."""
-
-        self.hours = self._checkint(x)
-    
-
-    def set_minutes(self, x: int) -> None:
-        """Safe setting function for minutes."""
-        
-        self.minutes = self._checkint(x)
-    
-
-    def set_treats(self, x: int) -> None:
-        """Safe setting function for treats."""
-        
-        self.treats = self._checkint(x)
+        if name in self._intFields and not isinstance(value, int):
+            msg = "Attribute '{}' must be an <class 'int'>".format(name)
+            raise TypeError(msg)
+        super().__setattr__(name, value)
 
 
     def set_time_defended(self) -> None:
         """
-        Compute total time defended from time attributes. 
-        Default is 0.
-
-        Exceptions
-        ----------
-        AttributeError if missing required attributes
+        Compute total time defended (in days) from time attributes.
         """
 
-        total = self.days + self.hours / HRS_IN_DAY \
-            + self.minutes / MINS_IN_DAY
+        totalDays = self.days
+        totalDays += self.hours / HRS_IN_DAY
+        totalDays += self.minutes / MINS_IN_DAY
 
-        self.defended = round(total, 4)   # in days
+        self.defended = round(totalDays, 4)
 
 
     def set_style(self) -> None:
         """
         Determine gym style based on number of days defended.
-
-        Exceptions
-        ----------
-        AttributeError if missing 'days' attribute
         """
 
         if self.days < LONG_TERM_DEFENDING:
@@ -166,16 +115,20 @@ class GoldGym:
             self.style = '100+ days'
 
 
-    def set_address(self, latlon: str, email: str) -> None:
+    def set_address(
+            self, 
+            latlon: str, 
+            email: str
+            ) -> None:
         """
         Set address dictionary.
 
         Parameters
         ----------
         latlon:
-            The known coordinates in `lat,long` format
+            The known coordinates in `lat,long` format.
         email:
-            The user's email required by third party ToS
+            The user's email required by third party ToS.
         
         See Also
         --------
@@ -185,17 +138,19 @@ class GoldGym:
         self.latlon = latlon
         geolocator  = Nominatim(user_agent=email)
 
-        # Proactive format clean up.
-        coords_list = [x.strip() for x in self.latlon.split(',')]
+        # [latitude, longitude]
+        coordinates = [x.strip() for x in self.latlon.split(',')]
 
-        location     = geolocator.reverse(coords_list)
-        self.address = location.raw['address']   # Dictionary.
+        location     = geolocator.reverse(coordinates)
+        self.address = location.raw['address']
+
+        if not self.address:
+            self.errors.append('ADDRESS')
 
 
     def set_city(self) -> None:
         """
         Set the gym's city from address.
-        Note: May require user interface.
         
         Required
         --------
@@ -203,12 +158,12 @@ class GoldGym:
 
         Exceptions
         ----------
-        AttributeError is missing 'address' attribute
+        AttributeError
         """
 
         city = None
 
-        # Common options address dictionary.
+        # Common options seen in Nominatim.
         for option in ['city','town','village','township']:
             if option in self.address.keys():
                 city = self.address[option]
@@ -225,7 +180,6 @@ class GoldGym:
     def set_county(self) -> None:
         """
         Set the gym's county from address.
-        Note: May require user interface.
         
         Required
         --------
@@ -233,7 +187,7 @@ class GoldGym:
 
         Exceptions
         ----------
-        AttributeError if missing 'address' attribute
+        AttributeError
         """
 
         try:
@@ -251,7 +205,6 @@ class GoldGym:
     def set_state(self) -> None:
         """
         Set the gym's state from address.
-        Note: May require user interface.
         
         Required
         --------
@@ -259,14 +212,14 @@ class GoldGym:
 
         Exceptions
         ----------
-        AttributeError if missing 'address' attribute
+        AttributeError
         """
 
         try:
            state = self.address['state']
         except KeyError:
             self.errors.append('STATE')
-            # Manually enter state name (RARE).
+            # Manually enter state name (rare in US).
             prompt = 'Enter STATE for `{}`:\t'.format(self.latlon)
             state = input(prompt).strip()
 
