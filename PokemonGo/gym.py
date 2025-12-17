@@ -136,10 +136,11 @@ class GoldGym:
         """
 
         self.latlon = latlon
-        geolocator  = Nominatim(user_agent=email)
 
-        # [latitude, longitude]
-        coordinates = [x.strip() for x in self.latlon.split(',')]
+        # Increase timeout to handle slow responses from Nominatim.
+        geolocator  = Nominatim(user_agent=email, timeout=5)
+        # (latitude, longitude)
+        coordinates = tuple( x.strip() for x in self.latlon.split(',') )
 
         location     = geolocator.reverse(coordinates)
         self.address = location.raw['address']
