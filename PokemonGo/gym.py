@@ -139,7 +139,7 @@ class GoldGym:
 
         # Increase timeout to handle slow responses from Nominatim.
         geolocator  = Nominatim(user_agent=email, timeout=5)
-        # (latitude, longitude)
+        # (Latitude, Longitude)
         coordinates = tuple( x.strip() for x in self.latlon.split(',') )
 
         location     = geolocator.reverse(coordinates)
