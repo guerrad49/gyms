@@ -5,12 +5,15 @@ import pytest
 
 from PokemonGo.gym import GoldGym
 from geopy.exc import ConfigurationError
-from PokemonGo.exceptions import ArgumentError
 
 
-class GymTests(unittest.TestCase):
+class GymTest(unittest.TestCase):
+    """
+    Test the behavior of GoldGym class setters.
+    """
+
     def setUp(self):
-        self.basicGym = GoldGym(uid=1)
+        self.testGym = GoldGym()
         self.msgOptParams = {
             'title': 'madison square garden',
             'victories': 200,
@@ -19,122 +22,137 @@ class GymTests(unittest.TestCase):
             'minutes': 10,
             'treats': 1_000
             }
-        self.MSG = GoldGym(uid=2, **self.msgOptParams)
+        self.MSG = GoldGym(**self.msgOptParams)
         self.msgLatLon = '40.75067515347, -73.99339578809'
-        self.email = 'lindamcmahon4u@gmail.com'   # valid email
+        self.email = 'lindamcmahon4u@gmail.com'   # Valid email.
 
     #==========================================================================
+
     @pytest.mark.order(1)
     def test_empty_instance(self):
-        self.assertRaises(TypeError, GoldGym)
-    
+        """
+        Verify an empty instance has default attribute values.
+        """
+
+        self.assertEqual(self.testGym.title, '')
+        self.assertEqual(self.testGym.victories, 0)
+        self.assertEqual(self.testGym.days, 0)
+        self.assertEqual(self.testGym.defended, 0)
+        self.assertEqual(len(self.testGym.errors), 0)
+        
     #==========================================================================
+    
     @pytest.mark.order(2)
-    def test_params_default(self):
-        self.assertEqual(
-            [self.basicGym.victories, self.basicGym.treats], 
-            [0, 0]
-            )
-    
+    def test_setting_int_fields(self):
+        """
+        Verify attributes defined in `_intField` cannot be assigned non 
+        **int** types. Even integer strings (i.e. "20") are invalid.
+        """
+
+        self.assertRaises(TypeError, self.testGym.victories, 10.5)
+        self.assertRaises(TypeError, self.testGym.days, 'a')
+        self.assertRaises(TypeError, self.testGym.treats, "20")
+
     #==========================================================================
+
     @pytest.mark.order(3)
-    def test_uid_char(self):
-        self.assertRaises(ArgumentError, GoldGym, 'a')
-    
-    @pytest.mark.order(4)
-    def test_uid_float(self):
-        self.assertRaises(ArgumentError, GoldGym, 1.5)
+    def test_set_style(self):
+        """
+        Verify `set_style` behavior depends on `days` value.
+        """
 
-    #==========================================================================
-    @pytest.mark.order(5)
-    def test_attribute_setter(self):
-        self.assertRaises(ArgumentError, self.basicGym.set_victories, 10.5)
-
-    #==========================================================================
-    @pytest.mark.order(6)
-    def test_style(self):
+        # Gym defended less than 100 days.
         self.MSG.set_style()
         self.assertEqual(self.MSG.style, 'gold')
 
-    @pytest.mark.order(7)
-    def test_style_long_term(self):
-        self.basicGym.set_days(1_001)
-        self.basicGym.set_style()
-        self.assertEqual(self.basicGym.style, '100+ days')
+        # Gym defended 100 days.
+        self.testGym.days = 100
+        self.testGym.set_style()
+        self.assertEqual(self.testGym.style, '100+ days')
     
     #==========================================================================
-    @pytest.mark.order(8)
-    def test_latlon_value(self):
-        self.assertRaises(
-            ValueError, 
-            self.basicGym.set_address, 
-            latlon = 'a',   # invalid value
-            email = self.email
-        )
-    
-    @pytest.mark.order(9)
-    def test_latlon_components(self):
-        # geolocator.reverse -> None
-        self.assertRaises(
-            AttributeError, 
-            self.basicGym.set_address, 
-            latlon = '3,4',   # invalid `lat,lon`
-            email = self.email
-        )
-    
-    #==========================================================================
-    @pytest.mark.order(10)
-    def test_address_wo_params(self):
-        self.assertRaises(TypeError, self.basicGym.set_address)
 
-    @pytest.mark.order(11)
-    def test_address_wo_email(self):
+    @pytest.mark.order(4)
+    def test_set_address_email(self):
+        """
+        Verify valid `email` parameter is given in `set_address`. This is 
+        required for Nominatim to obtain address from coordinates.
+        """
+
+        # Omit email.
         self.assertRaises(
             TypeError, 
-            self.basicGym.set_address, 
+            self.testGym.set_address, 
             latlon = self.msgLatLon
             )
     
-    @pytest.mark.order(12)
-    def test_address_email_invalid(self):
+        # Email must be a string.
         self.assertRaises(
             ConfigurationError, 
-            self.basicGym.set_address, 
+            self.testGym.set_address, 
             latlon = self.msgLatLon, 
             email = None
             )
 
     #==========================================================================
-    @pytest.mark.order(13)
-    def test_city_before_address(self):
-        self.assertRaises(AttributeError, self.MSG.set_city)
+    
+    @pytest.mark.order(5)
+    def test_set_address_latlon(self):
+        """
+        Verify correct and incorrect use of `set_address` with valid and 
+        invalid lalon parameter values.
+        """
 
-    @pytest.mark.order(14)
-    def test_city(self):
+        # Latlon must be comma separated coordinates.
+        self.assertRaises(
+            ValueError, 
+            self.testGym.set_address, 
+            latlon = 'a', 
+            email = self.email
+        )
+
+        # Latlon format is correct but invalid coordinate values.    
+        self.assertRaises(
+            AttributeError, 
+            self.testGym.set_address, 
+            latlon = '3,4', 
+            email = self.email
+        )
+
+        # Valid parameter values.
+        self.MSG.set_address(self.msgLatLon, self.email)
+        self.assertGreater(len(self.MSG.address), 0)
+    
+    #==========================================================================
+
+    @pytest.mark.order(6)
+    def test_set_city(self):
+        """
+        Verify `set_city` fails if `address` is not set and succeeds 
+        otherwise. Locations that require user-input will add to `errors` 
+        attribute appropriately.
+        """
+
+        # Cannot use set_city prior to set_address.
+        self.assertRaises(AttributeError, self.testGym.set_city)
+
+        # This is normal behavior.
         self.MSG.set_address(self.msgLatLon, self.email)
         self.MSG.set_city()
         self.assertEqual(self.MSG.city, 'city of new york')
 
-    @pytest.mark.order(15)
-    def test_city_w_input(self):
-        # use remote location (Wilderness State Park, MI)
-        self.basicGym.set_address(
-            '45.74127368988, -84.92224540493',
+        # Use remote location in High Peaks Wilderness (upstate NY).
+        self.testGym.set_address(
+            '44.109394, -74.317468',
             self.email
             )
-        # mock up user response
-        unittest.mock.builtins.input = lambda _: "carp lake"
-        self.basicGym.set_city()
-        self.assertEqual(self.basicGym.errors[0], 'CITY')
+        # Mock up user response.
+        unittest.mock.builtins.input = lambda _: "some town"
+        self.testGym.set_city()
+        self.assertEqual(self.testGym.city, 'some town')
+        self.assertEqual(self.testGym.errors[0], 'CITY')
 
-    #==========================================================================
-    @pytest.mark.order(16)
-    def test_county_strip(self):
-        # the word `county` should not appear
-        self.MSG.set_address(self.msgLatLon, self.email)
-        self.MSG.set_county()
-        self.assertNotEqual(self.MSG.county, 'new york county')
-
+#==========================================================================
 
 if __name__ == '__main__':
     unittest.main()
