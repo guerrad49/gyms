@@ -140,7 +140,7 @@ class BadgeImage:
         TypeError if self.titleCrop is not <np.ndarray> type.
 
         See Also
-        -------
+        --------
         BadgeImage.set_title_crop
         """
 
