@@ -4,48 +4,99 @@ import unittest.mock
 import pytest
 
 from PokemonGo.sheet import GymSheet
+from PokemonGo.exceptions import TitleNotFound
+from gspread import SpreadsheetNotFound
 
 
 class SheetTests(unittest.TestCase):
+    """
+    Test the process of accessing spreadsheet and methods for locating 
+    gym titles.
+
+    .. warning::
+        Tests may not pass if spreadsheet state is changed. If tests fail, 
+        please verify the row index values in each test.
+    """
+    
     def setUp(self):
-        key = 'subfiles/pogo_gyms_314413.json'
+        self.key = 'requirements/pogo_gyms_314413.json'
         name = 'gym_data'
-        self.gs = GymSheet(key, name)
+        self.gs = GymSheet(self.key, name)
 
     #==========================================================================
+
     @pytest.mark.order(1)
-    def test_empty_instance(self):
-        self.assertRaises(TypeError, GymSheet)
+    def test_invalid_sheet_name(self):
+        """
+        Verify an invalid sheet name raises the appropriate `gspread` error.
+        """
+
+        self.assertRaises(
+            SpreadsheetNotFound, 
+            GymSheet, 
+            self.key, 'InvalidName'
+            )
 
     #==========================================================================
+
     @pytest.mark.order(2)
-    def test_find_none(self):
-        self.assertRaises(TypeError, self.gs.find)
+    def test_find_new_unique(self):
+        """
+        Verify simple case of finding a new, unique title in the spreadsheet.
+        """
+
+        title = 'z_test_new_gym'
+
+        ans = self.gs.find(title)
+        self.assertEqual(ans, (title, 1405))
+
+        # The title doesn't have to be exact to find match.
+        unittest.mock.builtins.input = lambda _: "y"
+        ans = self.gs.find('z_tes1_new_gym')
+        self.assertEqual(ans, (title, 1405))
+
+    #==========================================================================
 
     @pytest.mark.order(3)
-    def test_find_exact(self):
-        # searching over processed
-        ans = self.gs.find('fish sculpture', uid=1140, new=False)
-        self.assertEqual(ans, ('fish sculpture', 12))
+    def test_find_update(self):
+        """
+        Verity process for locating previously scanned images. If used 
+        incorrectly, default values are returned along with logging error.
+        """
+        
+        title = 'the church of jesus christ of latter-day saints'
+
+        # Incorrect way of locating previously scanned images.
+        ans = self.gs.find(title)
+        self.assertEqual(ans[0], '')
+        self.assertEqual(ans[1], -1)
+        self.assertEqual(self.gs.errors[0], 'TITLE')
+
+        # Correct way of located previously scanned images.
+        ans = self.gs.find(title, isUpdate=True)
+        self.assertEqual(ans, (title, 131))
 
     @pytest.mark.order(4)
-    def test_find_similar(self):
-        """Title is read incorrectly. User accepts correction."""
+    def test_find_with_duplicates(self):
+        """
+        Verify process for finding new titles with multiple matches. This 
+        process raises error if the user makes a mistake..
+        """
 
-        # mock up user response
-        unittest.mock.builtins.input = lambda _: "y"
-        ans = self.gs.find('fish scu1pture', uid=1140, new=False)
-        self.assertEqual(ans, ('fish sculpture', 12))
+        # Mock up the response to the desired row index.
+        unittest.mock.builtins.input = lambda _: "60"
+        ans = self.gs.find('verizon', isUpdate=True)
+        self.assertEqual(ans, ('verizon', 60))
 
-    @pytest.mark.order(5)
-    def test_find_duplicates(self):
-        """Title has 5 duplicates. User chooses first index."""
+        # Mock up the response to the desired row index.
+        unittest.mock.builtins.input = lambda _: "1"
+        self.assertRaises(
+            TitleNotFound, 
+            self.gs.find, 
+            'verizon', True
+        )
 
-        # mock up user response
-        unittest.mock.builtins.input = lambda _: "588"
-        ans = self.gs.find('morris canal marker', uid=1147, new=False)
-        self.assertEqual(ans, ('morris canal marker', 588))
-
+#==========================================================================
 
 if __name__ == '__main__':
     unittest.main()
