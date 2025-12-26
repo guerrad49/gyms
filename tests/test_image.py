@@ -9,6 +9,10 @@ from PokemonGo.exceptions import UnsupportedPhoneModel, InputError
 
 
 class ImageTests(unittest.TestCase):
+    """
+    Test the process of reading a gym image's values.
+    """
+
     def setUp(self):
         # Starbucks.
         self.img01 = BadgeImage('tests/images/IMG_0001.PNG')
