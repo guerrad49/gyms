@@ -2,10 +2,8 @@
 PokemonGo.gym
 -------------
 
-This module contains GoldGym class for compiling a PokemonGo 
-gym's data in one location. Manually set attributes are used 
-to automate setting other attributes. The setter methods 
-show use-cases for this process.
+This module contains the GoldGym class for storing a gold gym's data 
+values in one location.
 """
 
 
@@ -23,22 +21,31 @@ class GoldGym:
     """
     Class to manage PokemonGo gym-related attributes.
 
-    Examples
-    --------
-    >>> # Instance w/o parameters.
-    >>> aa = GoldGym()
-    >>> 
-    >>> # Instance w/ all optional parameters.
-    >>> bb = GoldGym(title='sydney opera house', 
-    ...     victories=100, days=10, hours=7,
-    ...     minutes=20, treats=500)
-    >>> 
-    >>> # Instance w/ unpacking dictionary of parameters.
-    >>> params = {
-    ...     'title': '大阪城', 'victories': 246, 'days': 2, 
-    ...     'hours': 3, 'minutes': 40, 'treats': 369
-    ...     }
-    >>> cc = GoldGym(**params)
+    :param str title: (optional) The gym title.
+    :param int victories: (optional) The number of victories.
+    :param int days: (optional) The number of days defending.
+    :param int hours: (optional) The number of hours defending.
+    :param int minutes: (optional) The number of minutes defending.
+    :param int treats: (optional) The number of treats.
+
+    Examples:
+
+    .. code:: python
+
+        >>> # Instance w/o parameters.
+        >>> aa = GoldGym()
+
+        >>> # Instance w/ all optional parameters.
+        >>> bb = GoldGym(title='sydney opera house', 
+        ...     victories=100, days=10, hours=7,
+        ...     minutes=20, treats=500)
+
+        >>> # Instance w/ unpacking dictionary of parameters.
+        >>> params = {
+        ...     'title': '大阪城', 'victories': 246, 'days': 2, 
+        ...     'hours': 3, 'minutes': 40, 'treats': 369
+        ...     }
+        >>> cc = GoldGym(**params)
     """
 
     _intFields = {
@@ -63,28 +70,10 @@ class GoldGym:
         self.defended  = 0
         self.treats    = treats
         self.errors    = list()
-        
-        """
-        Parameters
-        ----------
-        title:
-            The gym title.
-        victories:
-            The number of victories at a gym.
-        days:
-            The number of days defending a gym.
-        hours:
-            The number of additional hours defending a gym.
-        minutes:
-            The number of additional minutes defending a gym.
-        treats:
-            The number of treats fed at a gym.
-        errors:
-            The list of processing errors.
-        """
+    
 
     def __setattr__(self, name, value):
-        """Check specific attributes for typing."""
+        """Check integer attributes for typing."""
 
         if name in self._intFields and not isinstance(value, int):
             msg = "Attribute '{}' must be an <class 'int'>".format(name)
@@ -94,7 +83,7 @@ class GoldGym:
 
     def set_time_defended(self) -> None:
         """
-        Compute total time defended (in days) from time attributes.
+        Compute the total time defended (in days) from defending attributes.
         """
 
         totalDays = self.days
@@ -106,7 +95,7 @@ class GoldGym:
 
     def set_style(self) -> None:
         """
-        Determine gym style based on number of days defended.
+        Determine gym style from number of days defended.
         """
 
         if self.days < LONG_TERM_DEFENDING:
@@ -121,18 +110,11 @@ class GoldGym:
             email: str
             ) -> None:
         """
-        Set address dictionary.
+        Set address dictionary from coordinates using 
+        :class:`geopy.geocoders.Nominatim`.
 
-        Parameters
-        ----------
-        latlon:
-            The known coordinates in `lat,long` format.
-        email:
-            The user's email required by third party ToS.
-        
-        See Also
-        --------
-        geopy.geocoders.Nominatim
+        :param str latlon: The known coordinates in `lat,long` format.
+        :param str email: The user email required by third party ToS.
         """
 
         self.latlon = latlon
@@ -151,15 +133,10 @@ class GoldGym:
 
     def set_city(self) -> None:
         """
-        Set the gym's city from address.
+        Set the gym's city from address. Users should make prior call to 
+        :meth:`GoldGym.set_address`.
         
-        Required
-        --------
-        GoldGym.set_address
-
-        Exceptions
-        ----------
-        AttributeError
+        :raises AttributeError: if :attr:`GoldGym.address` not set.
         """
 
         city = None
@@ -180,15 +157,10 @@ class GoldGym:
 
     def set_county(self) -> None:
         """
-        Set the gym's county from address.
+        Set the gym's county from address. Users should make prior call to 
+        :meth:`GoldGym.set_address`.
         
-        Required
-        --------
-        GoldGym.set_address
-
-        Exceptions
-        ----------
-        AttributeError
+        :raises AttributeError: if :attr:`GoldGym.address` not set.
         """
 
         try:
@@ -205,15 +177,10 @@ class GoldGym:
 
     def set_state(self) -> None:
         """
-        Set the gym's state from address.
+        Set the gym's state from address. Users should make prior call to 
+        :meth:`GoldGym.set_address`.
         
-        Required
-        --------
-        GoldGym.set_address
-
-        Exceptions
-        ----------
-        AttributeError
+        :raises AttributeError: if :attr:`GoldGym.address` not set.
         """
 
         try:

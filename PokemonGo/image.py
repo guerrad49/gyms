@@ -68,15 +68,20 @@ class ModelParams:
         else:
             raise UnsupportedPhoneModel
 
-        
+
 class BadgeImage:
     """
-    Class for processing a gym badge's image and extracting text.
+    Class for processing a badge image and extracting relevant text. 
 
-    Examples
-    --------
-    >>> # Use relative path.
-    >>> img = BadgeImage('badges/IMG_0001.PNG')
+    :param str path: The file path to the image.
+    :param bool verbose: (optional) If True, print progress statements.
+
+    Examples: 
+
+    .. code:: python
+
+        >>> # Use relative path.
+        >>> img = BadgeImage('badges/IMG_0001.PNG')
     """
     
     def __init__(
@@ -84,14 +89,6 @@ class BadgeImage:
             path: str, 
             verbose: Optional[bool] = False
             ) -> None:
-        """
-        Parameters
-        ----------
-        path:
-            The file path to the image.
-        verbose:
-            Print progress statements.
-        """
 
         self.path = path
         self.verbose = verbose
@@ -104,24 +101,21 @@ class BadgeImage:
 
     def set_title_crop(
             self, 
-            offset: Optional[int] = 0
+            northOffset: Optional[int] = 0
             ) -> None:
         """
-        Set the cropped image containing the badge title.
+        Crop full image to title region and set result to 
+        :attr:`BadgeImage.titleCrop`.
 
-        Parameters
-        ----------
-        offset:
-            The value to offset the title's vertical start.
+        :param int northOffset: (optional) Offset title by given amount. 
+            Positive value expands north.
 
-        Exceptions
-        ----------
-        IndexError if offset value is too large.
+        :raises IndexError: if `northOffset` exceeds image north.
         """
 
-        titleNorth = self.params.titleStart - offset
+        titleNorth = self.params.titleStart - northOffset
         if titleNorth < 0:
-            raise IndexError("Excessive offset value")
+            raise IndexError("Excessive northOffset value")
         
         self.titleCrop = self.image[
             titleNorth : self.params.titleEnd, 
@@ -132,21 +126,21 @@ class BadgeImage:
     def soften_title_overlay(self) -> None:
         """
         Reconstruct title image by softening phone status from title 
-        using inpainting.
+        using inpainting. The resulting :attr:`BadgeImage.titleCrop` 
+        typically yields better quality for reading text. Users should 
+        make prior call to :meth:`BadgeImage.set_title_crop`.
 
-        Exceptions
-        ----------
-        AttributeError if self.titleCrop is not initialized.
-        TypeError if self.titleCrop is not <np.ndarray> type.
+        :raises AttributeError: if :attr:`BadgeImage.titleCrop` is not set.
+        :raises TypeError: if :attr:`BadgeImage.titleCrop` is not 
+            :class:`numpy.ndarray` type.
 
-        See Also
-        --------
-        BadgeImage.set_title_crop
+        .. seealso::
+            https://docs.opencv.org/3.4/df/d3d/tutorial_py_inpainting.html
         """
 
         if not isinstance(self.titleCrop, np.ndarray):
             msg  = 'argument "{}" '.format(self.titleCrop)
-            msg += 'must be <np.ndarray> type'
+            msg += 'must be <numpy.ndarray> type'
             raise TypeError(msg)
         
         # Reconstruct darkest pixels i.e. the status bar.
@@ -164,7 +158,8 @@ class BadgeImage:
 
     def set_activity_crop(self) -> None:
         """
-        Set the cropped image containing the badge activity section.
+        Crop full image to activity region and set result to 
+        :attr:`BadgeImage.activityCrop`.
         """
 
         self.activityCrop = self.image[
@@ -178,24 +173,13 @@ class BadgeImage:
             activityText: str
             ) -> dict:
         """
-        Compute badge statistics from extracted activity text.
+        Compute badge statistics from extracted activity text. Users would 
+        typically set `activityText` to the output of 
+        :meth:`BadgeImage.get_text`.
 
-        Parameters
-        ----------
-        activityText:
-            The extracted text from the activity section.
-        
-        Returns
-        -------
-        The dictionary containing badge statistics.
-
-        Exceptions
-        ----------
-        InputError if regex search does not return match.
-
-        See Also
-        --------
-        BadgeImage.get_text
+        :param str activityText: The text to parse badge statistics.
+        :returns: A dictionary containing badge statistics.
+        :raises InputError: if regex search does not return match.
         """
 
         match = re.search(TOTAL_ACTIVITY_RE, activityText)
@@ -220,20 +204,15 @@ class BadgeImage:
             region: str = 'all'
             ) -> str:
         """
-        Retrieves all text from image region.
+        Retrieves all text from specified image region. Preprocessing 
+        is done using 
+        `OpenCV <https://docs.opencv.org/3.4/d1/dfb/intro.html>`__ 
+        before extracting text with :meth:`pytesseract.image_to_string`.
 
-        Parameters
-        ----------
-        region:
-            The image region ['all', 'title', 'activity'].
-        
-        Returns
-        -------
-        The extracted text string.
-
-        Exceptions
-        ----------
-        AttributeError if region crop was not initialized.
+        :param str region: The image region. 
+            Allowed values are ``all``, ``title``, ``activity``.
+        :returns: The extracted text string in full lowercase.
+        :raises AttributeError: if region crop was not initialized.
         """
 
         if region == 'all':
@@ -271,14 +250,11 @@ class BadgeImage:
             newId: int
             ) -> None:
         """
-        Move image file to storage with a new id.
+        Move image file to storage as `IMG_####.PNG` where the file 
+        is assigned the `newId` value.
 
-        Parameters
-        ----------
-        directory:
-            The path to storage directory.
-        newId:
-            The new base id used in renaming image.
+        :param str directory: The path to storage directory.
+        :param int newId: The id used in renaming an image.
         """
     
         newName = 'IMG_{:04d}.PNG'.format(newId)
