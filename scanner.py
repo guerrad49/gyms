@@ -39,18 +39,18 @@ if __name__ == '__main__':
         # Single line titles (most cases).
         img.set_title_crop()
         titleTxt = img.get_text(region='title')
-        titleFound, rowIndex = gs.find(titleTxt)
+        titleFound, rowIndex = gs.find_title(titleTxt)
 
         # Two line titles.
         if rowIndex == -1:
             img.set_title_crop(offset=40)
             img.soften_title_overlay()
             titleTxt = img.get_text(region='title')
-            titleFound, rowIndex = gs.find(titleTxt)
+            titleFound, rowIndex = gs.find_title(titleTxt)
 
             # Multi-line titles require user input for now.
             if rowIndex == -1:
-                titleFound, rowIndex = gs.find_from_input()
+                titleFound, rowIndex = gs.prompt_for_title()
 
         # ========== End title extract ==========
 
@@ -91,7 +91,7 @@ if __name__ == '__main__':
         del rowDict['errors']
 
         # Write data to spreadsheet.
-        gs.write_row(rowIndex, rowDict)
+        gs.write_to_row(rowIndex, rowDict)
 
         # Log any/all errors.
         errors = gs.errors + img.errors + gym.errors

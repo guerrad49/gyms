@@ -20,19 +20,33 @@ import numpy as np
 import pandas as pd
 from gspread import service_account
 
-from .exceptions import TitleNotFound
+from .exceptions import TitleNotFound, InputError
 from .utils import are_similar
 
 
 class GymSheet:
     """
-    An instance of this class handles access to a Google sheet.
+    An instance of this class handles access to a Google Sheets' 
+    spreadsheet containing a database of gyms.
     
-    Examples
-    --------
-    >>> # instance w/ required parameters
-    >>> myKey = 'path/to/json/key'
-    >>> gs = GymSheet(myKey, 'my_sheet_name')
+    :param str keyPath: The path to json key required for API access.
+    :param str sheetName: The spreadsheet name.
+    :param bool verbose: (optional) If True, print progress statements.
+
+    Examples:
+
+    .. code:: python
+
+        >>> # instance w/ required parameters
+        >>> myKey = 'path/to/json/key'
+        >>> gs = GymSheet(myKey, 'my_sheet_name')
+
+    .. note::
+        Read/write access to a spreadsheet is handled using 
+        `gspread <https://docs.gspread.org/en/latest/index.html>`__.
+        The :attr:`GymSheet.sheet` attribute stores a spreadsheet of type 
+        :class:`gspread.worksheet.Worksheet`. We always assume the database 
+        is contained in "Sheet1" of a spreadsheet.
     """
     
     def __init__(
@@ -41,16 +55,6 @@ class GymSheet:
             sheetName: str, 
             verbose: Optional[bool] = False
             ) -> None:
-        """
-        Parameters
-        ----------
-        keyPath: 
-            The path to json key required for API access.
-        sheetName: 
-            The name of Google Sheet with data.
-        verbose:
-            Print progress statements.
-        """
 
         self.verbose = verbose
         self._retrieve_data(keyPath, sheetName)
@@ -63,12 +67,8 @@ class GymSheet:
             sheetName: str
             ) -> None:
         """
-        Partition sheet records to category dataframes.
-        This method is only called at initialization.
-
-        See Also
-        --------
-        gspread.worksheet.Worksheet
+        Partition sheet records into dataframes. This method is/should only 
+        be called at instantiation to access database.
         """
 
         client     = service_account(keyPath)
@@ -84,31 +84,20 @@ class GymSheet:
             print('INFO - Google sheet data extracted successfully.')
     
     
-    def find(
+    def find_title(
             self, 
             inTitle: str, 
             isUpdate: Optional[bool] = False
             ) -> tuple[str, int]:
         """
-        Locates title within database and corrects title if necessary.
+        Find a gym title in the spreadsheet. If no exact match, look for 
+        similar matches (see :meth:`utils.are_similar`). If no match still, 
+        the output will contain an empty title.
         
-        Parameters
-        ----------
-        inTitle:
-            The title to locate.
-        isUpdate:
-            Specifies if inTitle's data is an update.
-
-        Returns
-        -------
-        outTitle:
-            The title from database.
-        rowIndex:
-            The row index for title.
-        
-        Exceptions
-        ----------
-        TitleNotFound if title search unsuccessful.
+        :param str inTitle: The title to locate.
+        :param bool isUpdate: (optional) If True, specifies update to 
+            `inTitle` data.
+        :returns: The title and row index values in the database.
         """
 
         if not isUpdate:
@@ -133,74 +122,75 @@ class GymSheet:
         if matches.shape[0] == 1:
             outTitle = matches.iat[0,1]
             rowIndex = matches.index[0]
-        elif matches.shape[0] > 1:  # Multiple matches.
-            outTitle = matches.iat[0,1]
-            columns  = ['title','latlon','city','state']
-            prompt   = 'Duplicates found.\n'
-            prompt  += matches[columns].to_string()
-            prompt  += '\nEnter correct INDEX:\t'
-            rowIndex   = int(input(prompt))
-            if rowIndex not in matches.index:
-                raise TitleNotFound
-            
-        if rowIndex == -1:
+        #  Multiple matches.
+        elif matches.shape[0] > 1:
+            outTitle, rowIndex = self._find_from_dupes(matches)
+        # No matches.
+        else:
             self.errors.append('TITLE')
         
         return outTitle, rowIndex
 
 
-    def find_from_input(
+    def prompt_for_title(
             self, 
-            isUpdate: Optional[bool] = True
+            isUpdate: Optional[bool] = False
             ) -> tuple[str, int]:
         """
-        Helper method to GymSheet.find relying on user input.
+        Find a gym title in the spreadsheet by prompting the user to 
+        provide the title. Adds an extra layer to :meth:`find_title`.
         
-        Parameters
-        ----------
-        isUpdate:
-            Specifies if inTitle's data is an update.
-
-        Returns
-        -------
-        outTitle:
-            The title from database.
-        rowIndex:
-            The row index for title.
-        
-        Exceptions
-        ----------
-        TitleNotFound if title search unsuccessful.
+        :param bool isUpdate: (optional) If True, specifies update to 
+            `inTitle` data.
+        :returns: The title and row index values in the database.
+        :raises TitleNotFound: if title search unsuccessful.
         """
         
-        prompt = 'Enter correct TITLE for badge:\n   '
+        prompt = 'Enter correct TITLE for badge:\n\t'
         title = input(prompt).strip()
 
-        outTitle, rowIndex = self.find(title, isUpdate=isUpdate)
+        outTitle, rowIndex = self.find_title(title, isUpdate=isUpdate)
         if rowIndex == -1:
             raise TitleNotFound
 
         return outTitle, rowIndex
+    
+
+    def _find_from_dupes(
+            self, 
+            duplicates: pd.core.frame.DataFrame
+            ) -> tuple[str, int]:
+        """
+        Find a gym title and row index from a list of duplicates 
+        (or near duplicates).
+
+        .. versionadded:: 1.1.0
+        """
+        
+        outTitle = duplicates.iat[0,1]
+        columns  = ['title','latlon','city','state']
+        prompt   = 'Duplicates found.\n'
+        prompt  += duplicates[columns].to_string()
+        prompt  += '\nEnter correct INDEX:\t'
+        rowIndex = int(input(prompt))
+
+        if rowIndex not in duplicates.index:
+            raise InputError
+        
+        return outTitle, rowIndex
 
 
-    def write_row(
+    def write_to_row(
             self, 
             rowIndex: int, 
             rowData: dict
             ) -> None:
         """
-        Fill sheet row with new values.
+        Write data to spreadsheet row. The `rowData` should contain all 
+        the fields from a row in order.
         
-        Parameters
-        ----------
-        rowIndex:
-            The row index to write in google sheet.
-        rowData:
-            The row data as a dictionary.
-
-        See Also
-        --------
-        gspread.worksheet.Worksheet
+        :param int rowIndex: The spreadsheet's row index.
+        :param dict rowData: The row data.
         """
 
         # Get gym values needed.
@@ -217,11 +207,7 @@ class GymSheet:
 
     def geo_sort(self) -> None:
         """
-        Sort sheet contents geographically.
-        
-        See Also
-        --------
-        gspread.worksheet.Worksheet
+        Sort the spreadsheet contents geographically.
         """
         
         cols = self.sheet.row_values(1)   # Column titles.
