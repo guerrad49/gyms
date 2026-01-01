@@ -1,6 +1,6 @@
 """PokemonGo Python API"""
 
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 __author__ = "David Guerra"
 
 from .sheet import GymSheet
