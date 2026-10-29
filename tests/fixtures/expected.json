@@ -1,0 +1,85 @@
+{
+  "IMG_0001.PNG": {
+    "model": "iSE",
+    "title": "starbucks",
+    "victories": 448,
+    "days": 23,
+    "hours": 6,
+    "minutes": 16,
+    "treats": 121,
+    "defended": 23.2611,
+    "style": "gold",
+    "known_defects": {}
+  },
+  "IMG_0002.PNG": {
+    "model": "i11",
+    "title": "portland head light",
+    "victories": 0,
+    "days": 21,
+    "hours": 18,
+    "minutes": 7,
+    "treats": 104,
+    "defended": 21.7549,
+    "style": "gold",
+    "known_defects": {}
+  },
+  "IMG_0003.PNG": {
+    "model": "i15",
+    "title": "the church of jesus christ of latter-day saints",
+    "victories": 8,
+    "days": 21,
+    "hours": 19,
+    "minutes": 0,
+    "treats": 13,
+    "defended": 21.7917,
+    "style": "gold",
+    "known_defects": {
+      "title_single_pass": "D10",
+      "title_newlines": "D1"
+    }
+  },
+  "IMG_1131.PNG": {
+    "model": "i11",
+    "title": "paradise avenue gatehouse, spring grove",
+    "victories": 15,
+    "days": 102,
+    "hours": 5,
+    "minutes": 0,
+    "treats": 20,
+    "defended": 102.2083,
+    "style": "100+ days",
+    "known_defects": {
+      "title_single_pass": "D10",
+      "title_newlines": "D1"
+    }
+  },
+  "IMG_1295.PNG": {
+    "model": "i15",
+    "title": "greater washington deliverance temple",
+    "victories": 1,
+    "days": 20,
+    "hours": 6,
+    "minutes": 58,
+    "treats": 16,
+    "defended": 20.2903,
+    "style": "gold",
+    "known_defects": {
+      "title_single_pass": "D10",
+      "title_newlines": "D1"
+    }
+  },
+  "IMG_1305.PNG": {
+    "model": "i15",
+    "title": "ashford court playground",
+    "victories": 27,
+    "days": 18,
+    "hours": 0,
+    "minutes": 56,
+    "treats": 16,
+    "defended": 18.0389,
+    "style": "gold",
+    "known_defects": {
+      "activity": "D1"
+    }
+  }
+}
