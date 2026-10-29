@@ -1,3 +1,6 @@
+# The frozen v1 code in legacy/ must stay byte-for-byte unchanged.
+exclude: ^legacy/
+
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v5.0.0
@@ -12,7 +15,7 @@ repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.17.3
     hooks:
-      - id: ruff
+      - id: ruff-check
         args: ["--fix"]
       - id: ruff-format
   - repo: local
