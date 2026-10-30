@@ -17,7 +17,7 @@ Run the executable `setup.sh` which will
 #### 2. Google Sheet
 This is arguably the most tedious section.
 * The user must create a Google Sheet with the following headers:
-    
+
     > uid | title | model | style | victories | defended | treats | coordinates | city | county | state
 
 * The `scanner.py` script will populate all BUT two fields. The fields *title* and *coordinates* must be **manually** populated for each row/gym. The *title* should use all lowercase and *coordinates* should be comma-separated with no space in between i.e. 40.758186,-73.985585. (Suggestion: Access **Ingress** maps for coordinates.)
