@@ -30,6 +30,7 @@ dependencies = [
     "opencv-python-headless>=4.9",
     "pytesseract>=0.3.10",
     "geopy>=2.4",
+    "python-dotenv>=1.0",
 ]
 
 [project.optional-dependencies]
@@ -121,3 +122,4 @@ branch = true
 
 [tool.coverage.report]
 exclude_also = ["if TYPE_CHECKING:", "raise NotImplementedError"]
+fail_under = 90
