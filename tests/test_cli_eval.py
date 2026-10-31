@@ -54,6 +54,8 @@ def test_eval_runs_end_to_end(
             "2",
             "--problems",
             str(problems),
+            "--near-misses",
+            str(tmp_path / "near.csv"),
         ]
     )
     captured = capsys.readouterr()
@@ -61,6 +63,8 @@ def test_eval_runs_end_to_end(
     assert "Screenshots checked: 6 (0 unreadable or missing)" in captured.out
     assert "would need manual input" in captured.out
     assert "Wrote 0 problem row(s)" in captured.out
+    assert "Wrote 0 near-miss row(s)" in captured.out
+    assert "close but not exact       0 rows" in captured.out
     assert "6/6" in captured.err
 
 

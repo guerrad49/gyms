@@ -12,10 +12,11 @@ from PokemonGo.evaluate import (
     find_image,
     format_report,
     load_truth,
+    write_near_misses,
     write_problems,
 )
 from PokemonGo.models import Activity
-from PokemonGo.vision.reader import BadgeReader
+from PokemonGo.vision.reader import BadgeReader, TitleCandidate
 from tests.support.engines import ScriptedEngine, lines, result
 from tests.support.expected import ALL, IMAGES_DIR, write_truth_csv
 
@@ -123,6 +124,8 @@ def test_evaluate_compares_readings_with_the_truth() -> None:
     assert second.stats_ok["treats"] is False
     assert second.stats_ok["victories"] is True
     assert second.needs_help
+    assert second.activity_text == "victories\n0 21d 18h 7m 105"
+    assert [c.text for c in second.candidates] == ["portland head ligt"]
     assert missing.error == "image not found"
     assert missing.needs_help
     assert seen == [(1, 3), (2, 3), (3, 3)]
@@ -187,11 +190,112 @@ def test_write_problems_creates_a_csv(tmp_path: Path) -> None:
         rows = list(csv.DictReader(handle))
     assert rows[0] == {
         "uid": "2",
+        "problem": "title,treats",
         "expected_title": "portland",
         "read_title": "xyz",
-        "problem": "title,treats",
+        "activity_text": "",
+        "candidates": "",
     }
     assert rows[1]["problem"] == "image not found"
+
+
+def _diagnostic_report() -> EvalReport:
+    candidates = (
+        TitleCandidate("portland head ligt", 80.0, "tall"),
+        TitleCandidate("portland", 95.0, "default"),
+    )
+    return EvalReport(
+        (
+            RowResult(
+                1,
+                "starbucks",
+                "starbucks",
+                True,
+                True,
+                True,
+                {"treats": True},
+                True,
+            ),
+            RowResult(
+                2,
+                "portland head light",
+                "portland head ligt",
+                False,
+                True,
+                True,
+                {"treats": True},
+                True,
+                candidates=candidates,
+            ),
+            RowResult(
+                3,
+                "somewhere",
+                "xyz",
+                False,
+                False,
+                True,
+                {"treats": False},
+                False,
+                activity_text="victories\n27 18d 7n 16",
+                candidates=candidates,
+            ),
+            RowResult(
+                4,
+                "unreadable",
+                "q",
+                False,
+                False,
+                False,
+                {"treats": True},
+                True,
+            ),
+        )
+    )
+
+
+def test_the_report_separates_the_kinds_of_title_failure() -> None:
+    report = _diagnostic_report()
+    assert report.near_misses == 1
+    assert report.ranking_misses == 1  # row 3: reachable, not chosen
+    assert report.unreachable == 1  # row 4
+    text = format_report(report)
+    assert "close but not exact       1 rows" in text
+    assert "ranking picked wrong      1 rows" in text
+    assert "no variant read it        1 rows" in text
+
+
+def test_problems_include_the_raw_statistics_and_the_alternatives(
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / "problems.csv"
+    assert write_problems(_diagnostic_report(), path) == 2
+    with path.open(newline="", encoding="utf-8") as handle:
+        rows = {r["uid"]: r for r in csv.DictReader(handle)}
+    assert rows["3"]["problem"] == "title,treats"
+    assert rows["3"]["activity_text"] == "victories / 27 18d 7n 16"
+    assert rows["3"]["candidates"] == (
+        "portland head ligt [tall 80] || portland [default 95]"
+    )
+
+
+def test_write_near_misses_lists_close_but_inexact_titles(
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / "near.csv"
+    assert write_near_misses(_diagnostic_report(), path) == 1
+    with path.open(newline="", encoding="utf-8") as handle:
+        rows = list(csv.DictReader(handle))
+    assert rows == [
+        {
+            "uid": "2",
+            "similarity": "0.973",
+            "expected_title": "portland head light",
+            "read_title": "portland head ligt",
+            "candidates": (
+                "portland head ligt [tall 80] || portland [default 95]"
+            ),
+        }
+    ]
 
 
 @pytest.mark.ocr

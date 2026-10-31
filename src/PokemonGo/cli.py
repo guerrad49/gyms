@@ -85,6 +85,11 @@ def build_parser() -> argparse.ArgumentParser:
         type=Path,
         help="write the rows that needed help to this CSV file",
     )
+    evaluate.add_argument(
+        "--near-misses",
+        type=Path,
+        help="write rows with a close but not identical title to this CSV",
+    )
     return parser
 
 
@@ -94,6 +99,7 @@ def _run_eval(args: argparse.Namespace) -> int:
         evaluate,
         format_report,
         load_truth,
+        write_near_misses,
         write_problems,
     )
     from PokemonGo.vision.engines import make_engine
@@ -118,6 +124,9 @@ def _run_eval(args: argparse.Namespace) -> int:
     if args.problems is not None:
         count = write_problems(report, args.problems)
         print(f"\nWrote {count} problem row(s) to {args.problems}")
+    if args.near_misses is not None:
+        count = write_near_misses(report, args.near_misses)
+        print(f"Wrote {count} near-miss row(s) to {args.near_misses}")
     return 0
 
 

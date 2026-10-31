@@ -28,7 +28,7 @@ from PokemonGo.errors import ConfigError, ParseError, PogoError
 from PokemonGo.matching import SIMILARITY_MIN, similarity
 from PokemonGo.models import Activity
 from PokemonGo.parsing import normalize_title
-from PokemonGo.vision.reader import BadgeReader
+from PokemonGo.vision.reader import BadgeReader, TitleCandidate
 
 TRUTH_COLUMNS: Final = (
     "uid",
@@ -89,6 +89,11 @@ class RowResult:
         Whether every statistic agrees.
     error : str
         Why the row could not be read (missing or unreadable image, ...).
+    activity_text : str
+        The raw text read from the statistics area, to see why parsing
+        failed.
+    candidates : tuple of TitleCandidate
+        Every distinct title reading, best first.
     """
 
     uid: int
@@ -100,6 +105,8 @@ class RowResult:
     stats_ok: dict[str, bool] | None = None
     all_stats_ok: bool = False
     error: str = ""
+    activity_text: str = ""
+    candidates: tuple[TitleCandidate, ...] = ()
 
     @property
     def needs_help(self) -> bool:
@@ -141,6 +148,25 @@ class EvalReport:
         if not rows:
             return 0.0
         return sum(1 for row in rows if predicate(row)) / len(rows)
+
+    @property
+    def ranking_misses(self) -> int:
+        """Rows where a variant read the title well but another won."""
+        return sum(
+            1 for r in self.readable if r.title_reachable and not r.title_close
+        )
+
+    @property
+    def unreachable(self) -> int:
+        """Rows where no variant read a close title."""
+        return sum(1 for r in self.readable if not r.title_reachable)
+
+    @property
+    def near_misses(self) -> int:
+        """Rows with a close but not identical title."""
+        return sum(
+            1 for r in self.readable if r.title_close and not r.title_exact
+        )
 
     @property
     def help_rate(self) -> float:
@@ -255,6 +281,8 @@ def _evaluate_row(
         ),
         stats_ok=stats,
         all_stats_ok=all(stats.values()),
+        activity_text=reading.activity_text,
+        candidates=reading.titles,
     )
 
 
@@ -336,6 +364,9 @@ def format_report(report: EvalReport, *, show: int = 15) -> str:
         _line(
             "reachable, any variant", report.rate(lambda r: r.title_reachable)
         ),
+        f"  close but not exact       {report.near_misses} rows",
+        f"  ranking picked wrong      {report.ranking_misses} rows",
+        f"  no variant read it        {report.unreachable} rows",
         "",
         "Statistics",
     ]
@@ -363,6 +394,18 @@ def format_report(report: EvalReport, *, show: int = 15) -> str:
     return "\n".join(lines)
 
 
+def _flat(text: str) -> str:
+    """Put multi-line OCR text on one line for a CSV cell."""
+    return " / ".join(part for part in text.splitlines() if part.strip())
+
+
+def _candidates(row: RowResult) -> str:
+    """Describe every title reading of a row, best first."""
+    return " || ".join(
+        f"{c.text} [{c.variant} {c.confidence:.0f}]" for c in row.candidates
+    )
+
+
 def write_problems(report: EvalReport, path: Path) -> int:
     """Write the rows that needed help to a CSV file.
 
@@ -381,7 +424,16 @@ def write_problems(report: EvalReport, path: Path) -> int:
     problems = [row for row in report.rows if row.needs_help]
     with path.open("w", newline="", encoding="utf-8") as handle:
         writer = csv.writer(handle)
-        writer.writerow(["uid", "expected_title", "read_title", "problem"])
+        writer.writerow(
+            [
+                "uid",
+                "problem",
+                "expected_title",
+                "read_title",
+                "activity_text",
+                "candidates",
+            ]
+        )
         for row in problems:
             if row.error:
                 problem = row.error
@@ -389,5 +441,53 @@ def write_problems(report: EvalReport, path: Path) -> int:
                 bad = [n for n, ok in (row.stats_ok or {}).items() if not ok]
                 parts = [] if row.title_close else ["title"]
                 problem = ",".join(parts + bad)
-            writer.writerow([row.uid, row.truth_title, row.read_title, problem])
+            writer.writerow(
+                [
+                    row.uid,
+                    problem,
+                    row.truth_title,
+                    row.read_title,
+                    _flat(row.activity_text),
+                    _candidates(row),
+                ]
+            )
     return len(problems)
+
+
+def write_near_misses(report: EvalReport, path: Path) -> int:
+    """Write rows whose title was close but not identical to a CSV file.
+
+    These are not failures, but each one would have asked a person to
+    confirm a similar match. Looking at them shows whether the cause is
+    OCR slips or stored titles that differ from the in-game text.
+
+    Parameters
+    ----------
+    report : EvalReport
+        The results.
+    path : pathlib.Path
+        The CSV to create.
+
+    Returns
+    -------
+    int
+        The number of rows written.
+    """
+    rows = [r for r in report.readable if r.title_close and not r.title_exact]
+    with path.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.writer(handle)
+        writer.writerow(
+            ["uid", "similarity", "expected_title", "read_title", "candidates"]
+        )
+        for row in rows:
+            score = similarity(row.read_title, row.truth_title)
+            writer.writerow(
+                [
+                    row.uid,
+                    f"{score:.3f}",
+                    row.truth_title,
+                    row.read_title,
+                    _candidates(row),
+                ]
+            )
+    return len(rows)
