@@ -6,6 +6,7 @@ eye from the screenshots, so they do not depend on any OCR engine.
 
 from __future__ import annotations
 
+import csv
 import json
 from dataclasses import dataclass
 from pathlib import Path
@@ -86,3 +87,40 @@ def load_expected() -> tuple[Expected, ...]:
 
 
 ALL: Final = load_expected()
+
+
+def write_truth_csv(path: Path) -> Path:
+    """Write the reference screenshots' values as a truth CSV.
+
+    The ``uid`` of each row is taken from the file name (``IMG_1131.PNG``
+    is gym 1131), so the screenshot folder doubles as the badges folder.
+    Titles are quoted properly: some contain commas.
+
+    Parameters
+    ----------
+    path : pathlib.Path
+        The CSV file to create.
+
+    Returns
+    -------
+    pathlib.Path
+        ``path``, for chaining.
+    """
+    with path.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.writer(handle)
+        writer.writerow(
+            ["uid", "title", "victories", "days", "hours", "minutes", "treats"]
+        )
+        for case in ALL:
+            writer.writerow(
+                [
+                    int(case.file[4:8]),
+                    case.title,
+                    case.victories,
+                    case.days,
+                    case.hours,
+                    case.minutes,
+                    case.treats,
+                ]
+            )
+    return path
