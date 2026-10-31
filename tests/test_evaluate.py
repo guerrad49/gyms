@@ -73,10 +73,15 @@ def test_load_truth_needs_an_existing_file(tmp_path: Path) -> None:
 
 
 def test_find_image_accepts_either_extension_case(tmp_path: Path) -> None:
-    (tmp_path / "IMG_0007.PNG").touch()
-    (tmp_path / "IMG_0008.png").touch()
-    assert find_image(tmp_path, 7) == tmp_path / "IMG_0007.PNG"
-    assert find_image(tmp_path, 8) == tmp_path / "IMG_0008.png"
+    on_disk = {7: "IMG_0007.PNG", 8: "IMG_0008.png"}
+    for name in on_disk.values():
+        (tmp_path / name).touch()
+    # Compare files, not spellings: macOS filesystems ignore case, so the
+    # path found may be spelled differently from the name on disk.
+    for uid, name in on_disk.items():
+        found = find_image(tmp_path, uid)
+        assert found is not None
+        assert found.samefile(tmp_path / name)
     assert find_image(tmp_path, 9) is None
 
 
