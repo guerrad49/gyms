@@ -21,3 +21,18 @@ class ParseError(PogoError, ValueError):
 
 class ConfigError(PogoError):
     """The configuration is missing, malformed, or inconsistent."""
+
+
+class UnsupportedDeviceError(PogoError):
+    """The image size matches no known phone profile.
+
+    Pass the phone model explicitly (``--model``) to force a profile.
+    """
+
+
+class ImageReadError(PogoError):
+    """An image file is missing, unreadable, or not an image."""
+
+
+class OcrError(PogoError):
+    """The OCR engine is missing or failed."""
