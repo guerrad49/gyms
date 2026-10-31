@@ -28,10 +28,12 @@ napoleon_numpy_docstring = True
 
 autosummary_generate = True
 autodoc_member_order = "bysource"
+autodoc_type_aliases = {"Image": "PokemonGo.vision.preprocess.Image"}
 nitpicky = True
 
 intersphinx_mapping = {
     "python": ("https://docs.python.org/3", None),
+    "numpy": ("https://numpy.org/doc/stable/", None),
 }
 
 html_theme = "furo"
