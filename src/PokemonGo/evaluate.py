@@ -89,6 +89,10 @@ class RowResult:
         Whether every statistic agrees.
     error : str
         Why the row could not be read (missing or unreadable image, ...).
+    truth_activity : Activity or None
+        The stored statistics.
+    read_activity : Activity or None
+        The statistics parsed from the screenshot, if any.
     activity_text : str
         The raw text read from the statistics area, to see why parsing
         failed.
@@ -105,6 +109,8 @@ class RowResult:
     stats_ok: dict[str, bool] | None = None
     all_stats_ok: bool = False
     error: str = ""
+    truth_activity: Activity | None = None
+    read_activity: Activity | None = None
     activity_text: str = ""
     candidates: tuple[TitleCandidate, ...] = ()
 
@@ -281,6 +287,8 @@ def _evaluate_row(
         ),
         stats_ok=stats,
         all_stats_ok=all(stats.values()),
+        truth_activity=row.activity,
+        read_activity=reading.activity,
         activity_text=reading.activity_text,
         candidates=reading.titles,
     )
@@ -399,6 +407,23 @@ def _flat(text: str) -> str:
     return " / ".join(part for part in text.splitlines() if part.strip())
 
 
+def _stats_text(activity: Activity | None) -> str:
+    """Format statistics the way the badge shows them."""
+    if activity is None:
+        return ""
+    return (
+        f"{activity.victories} | {activity.days}d {activity.hours}h "
+        f"{activity.minutes}m | {activity.treats}"
+    )
+
+
+def _dropped(row: RowResult) -> str:
+    """List the noise words discarded from the best title reading."""
+    if not row.candidates:
+        return ""
+    return " ".join(row.candidates[0].dropped)
+
+
 def _candidates(row: RowResult) -> str:
     """Describe every title reading of a row, best first."""
     return " || ".join(
@@ -430,7 +455,10 @@ def write_problems(report: EvalReport, path: Path) -> int:
                 "problem",
                 "expected_title",
                 "read_title",
+                "expected_stats",
+                "read_stats",
                 "activity_text",
+                "dropped_words",
                 "candidates",
             ]
         )
@@ -447,7 +475,10 @@ def write_problems(report: EvalReport, path: Path) -> int:
                     problem,
                     row.truth_title,
                     row.read_title,
+                    _stats_text(row.truth_activity),
+                    _stats_text(row.read_activity),
                     _flat(row.activity_text),
+                    _dropped(row),
                     _candidates(row),
                 ]
             )
@@ -477,7 +508,14 @@ def write_near_misses(report: EvalReport, path: Path) -> int:
     with path.open("w", newline="", encoding="utf-8") as handle:
         writer = csv.writer(handle)
         writer.writerow(
-            ["uid", "similarity", "expected_title", "read_title", "candidates"]
+            [
+                "uid",
+                "similarity",
+                "expected_title",
+                "read_title",
+                "dropped_words",
+                "candidates",
+            ]
         )
         for row in rows:
             score = similarity(row.read_title, row.truth_title)
@@ -487,6 +525,7 @@ def write_near_misses(report: EvalReport, path: Path) -> int:
                     f"{score:.3f}",
                     row.truth_title,
                     row.read_title,
+                    _dropped(row),
                     _candidates(row),
                 ]
             )

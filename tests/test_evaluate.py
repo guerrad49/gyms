@@ -124,6 +124,8 @@ def test_evaluate_compares_readings_with_the_truth() -> None:
     assert second.stats_ok["treats"] is False
     assert second.stats_ok["victories"] is True
     assert second.needs_help
+    assert second.truth_activity == Activity(0, 21, 18, 7, 104)
+    assert second.read_activity == Activity(0, 21, 18, 7, 105)
     assert second.activity_text == "victories\n0 21d 18h 7m 105"
     assert [c.text for c in second.candidates] == ["portland head ligt"]
     assert missing.error == "image not found"
@@ -193,7 +195,10 @@ def test_write_problems_creates_a_csv(tmp_path: Path) -> None:
         "problem": "title,treats",
         "expected_title": "portland",
         "read_title": "xyz",
+        "expected_stats": "",
+        "read_stats": "",
         "activity_text": "",
+        "dropped_words": "",
         "candidates": "",
     }
     assert rows[1]["problem"] == "image not found"
@@ -201,7 +206,7 @@ def test_write_problems_creates_a_csv(tmp_path: Path) -> None:
 
 def _diagnostic_report() -> EvalReport:
     candidates = (
-        TitleCandidate("portland head ligt", 80.0, "tall"),
+        TitleCandidate("portland head ligt", 80.0, "tall", ("_", "~")),
         TitleCandidate("portland", 95.0, "default"),
     )
     return EvalReport(
@@ -291,6 +296,7 @@ def test_write_near_misses_lists_close_but_inexact_titles(
             "similarity": "0.973",
             "expected_title": "portland head light",
             "read_title": "portland head ligt",
+            "dropped_words": "_ ~",
             "candidates": (
                 "portland head ligt [tall 80] || portland [default 95]"
             ),
@@ -309,3 +315,26 @@ def test_the_reference_screenshots_score_perfectly(
     assert report.rate(lambda r: r.title_exact) == 1.0
     assert report.rate(lambda r: r.all_stats_ok) == 1.0
     assert report.help_rate == 0.0
+
+
+def test_problems_show_the_expected_and_the_read_statistics(
+    tmp_path: Path,
+) -> None:
+    row = RowResult(
+        5,
+        "x",
+        "x",
+        True,
+        True,
+        True,
+        {"treats": False},
+        False,
+        truth_activity=Activity(387, 106, 8, 3, 1),
+        read_activity=Activity(387, 106, 8, 0, 31),
+    )
+    path = tmp_path / "problems.csv"
+    write_problems(EvalReport((row,)), path)
+    with path.open(newline="", encoding="utf-8") as handle:
+        [written] = list(csv.DictReader(handle))
+    assert written["expected_stats"] == "387 | 106d 8h 3m | 1"
+    assert written["read_stats"] == "387 | 106d 8h 0m | 31"
