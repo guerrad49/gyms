@@ -20,7 +20,21 @@ from tests.support.expected import ALL
 
 @pytest.mark.parametrize(
     ("text", "junk"),
-    [("_", True), ("«©", True), ("|", True), ("a", False), ("17:57", False)],
+    [
+        ("_", True),
+        ("«©", True),
+        ("|", True),
+        ("a", False),
+        ("17:57", False),
+        # Real title punctuation is not noise (it appears in 34 titles).
+        ("&", False),
+        ("-", False),
+        ("\u2013", False),
+        ("\u2014", False),
+        (":", False),
+        ("+", False),
+        ("/", False),
+    ],
 )
 def test_words_without_letters_or_digits_are_junk(
     text: str, junk: bool
@@ -45,6 +59,16 @@ def test_without_junk_stops_noise_dragging_confidence_down() -> None:
     clean = noisy.without_junk()
     assert clean.text == "Starbucks"
     assert clean.confidence == 96.0
+
+
+def test_without_junk_keeps_ampersands_and_dashes() -> None:
+    noisy = result(
+        ("_", 3), ("MSU", 90), ("-", 80), ("Bird", 90), ("House", 90)
+    )
+    assert noisy.without_junk().text == "MSU - Bird House"
+    assert result(
+        ("Paws", 90), ("&", 70), ("Claws", 90)
+    ).without_junk().text == ("Paws & Claws")
 
 
 def _fake_data(**overrides: list[Any]) -> dict[str, list[Any]]:

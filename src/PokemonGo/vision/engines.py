@@ -17,6 +17,15 @@ import pytesseract
 from PokemonGo.errors import OcrError
 from PokemonGo.vision.preprocess import Image
 
+PUNCTUATION_WORDS: Final = frozenset(
+    {"&", "-", "\u2013", "\u2014", "+", "/", ":"}
+)
+"""Words made only of punctuation that are nonetheless part of titles.
+
+Dropping them made ``"paws & claws"`` read as ``"paws claws"`` and
+``"msu - bird house"`` as ``"msu bird house"``.
+"""
+
 
 @dataclass(frozen=True, slots=True)
 class OcrWord:
@@ -37,6 +46,8 @@ class OcrWord:
     True
     >>> OcrWord("17:57", 90.0).is_junk
     False
+    >>> OcrWord("&", 90.0).is_junk
+    False
     """
 
     text: str
@@ -45,7 +56,13 @@ class OcrWord:
 
     @property
     def is_junk(self) -> bool:
-        """Whether the word has no letters or digits (OCR noise)."""
+        """Whether the word is OCR noise.
+
+        A word is noise when it has no letters or digits, unless it is
+        one of the punctuation marks in :data:`PUNCTUATION_WORDS`.
+        """
+        if self.text in PUNCTUATION_WORDS:
+            return False
         return not any(char.isalnum() for char in self.text)
 
 
@@ -91,7 +108,8 @@ class OcrResult:
 
         Stray marks such as ``_`` or ``«©`` come from the phone's status
         bar. Removing them before scoring stops one junk word from
-        dragging an otherwise perfect reading down.
+        dragging an otherwise perfect reading down. Real title
+        punctuation (``&``, ``-``, ``:``) is kept.
 
         Returns
         -------
