@@ -40,6 +40,14 @@ from PokemonGo.parsing import (
         ("5 7m 12", Activity(5, 0, 0, 7, 12)),
         # Rare seconds are ignored.
         ("27 18d 1h 5m 3s 16", Activity(27, 18, 1, 5, 16)),
+        # Digit look-alikes inside time values, from the benchmark of 1,191
+        # screenshots: "1m" read as "im"/"lm", "51m" as "5im", "5h" as "sh".
+        ("6 13d 11h im 43", Activity(6, 13, 11, 1, 43)),
+        ("0 18d 18h im 62", Activity(0, 18, 18, 1, 62)),
+        ("7 21d 5h lm 1", Activity(7, 21, 5, 1, 1)),
+        ("176 17d 8h 5im 27", Activity(176, 17, 8, 51, 27)),
+        ("11 19d sh 1m 17", Activity(11, 19, 5, 1, 17)),
+        ("160 42d 4h im 10", Activity(160, 42, 4, 1, 10)),
         # Values may be split across lines or separated by bars.
         ("27\n18d 0h 56m\n16", Activity(27, 18, 0, 56, 16)),
         ("27 | 18d 0h 56m | 16", Activity(27, 18, 0, 56, 16)),

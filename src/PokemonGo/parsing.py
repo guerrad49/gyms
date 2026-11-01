@@ -18,14 +18,19 @@ from PokemonGo.models import Activity, Coordinates, Flag
 # A digit, or the letter "o" that OCR often reads in place of a zero.
 _NUM: Final = r"[0-9o]"
 
+# Inside a time value (before d, h or m) Tesseract also reads the digit 1
+# as the letter i or l ("1m" -> "im"), and the digit 5 as s ("5h" -> "sh").
+_TIME: Final = r"[0-9oils]"
+_LOOKALIKES: Final = str.maketrans("oils", "0115")
+
 _ACTIVITY_RE: Final = re.compile(
     rf"""
     (?<![0-9a-z])                           # not inside a longer word
     (?P<victories>{_NUM}{{1,4}})
     [\s|]+
-    (?:(?P<days>{_NUM}{{1,3}})d[\s|]*)?
-    (?:(?P<hours>{_NUM}{{1,2}})h[\s|]*)?
-    (?:(?P<minutes>{_NUM}{{1,2}})m[\s|]*)?
+    (?:(?P<days>{_TIME}{{1,3}})d[\s|]*)?
+    (?:(?P<hours>{_TIME}{{1,2}})h[\s|]*)?
+    (?:(?P<minutes>{_TIME}{{1,2}})m[\s|]*)?
     (?:{_NUM}{{1,2}}s[\s|]*)?               # seconds: shown rarely, ignored
     (?P<treats>{_NUM}{{1,4}})
     (?![0-9a-z])
@@ -59,10 +64,10 @@ _TITLE_EDGE_JUNK: Final = " _|~"
 
 
 def _to_int(digits: str | None) -> int:
-    """Convert matched digits, reading a letter ``o`` as zero."""
+    """Convert matched text, reading look-alike letters as digits."""
     if digits is None:
         return 0
-    return int(digits.replace("o", "0"))
+    return int(digits.translate(_LOOKALIKES))
 
 
 def parse_activity(text: str) -> Activity | None:
@@ -70,8 +75,9 @@ def parse_activity(text: str) -> Activity | None:
 
     The text normally has a row of labels followed by a row of values,
     such as ``"victories time defended treats\n27 18d 0h 56m 16"``. The
-    labels are ignored. Inside the values, the letter ``o`` is read as
-    zero, which fixes the common ``18d oh 56m`` misreading.
+    labels are ignored. OCR look-alikes are read as digits: ``o`` is
+    zero everywhere, and inside a time value ``i`` and ``l`` are one and
+    ``s`` is five, so ``18d oh 56m`` and ``13d 11h im`` both parse.
 
     Parameters
     ----------
@@ -93,6 +99,8 @@ def parse_activity(text: str) -> Activity | None:
     Activity(victories=8, days=21, hours=19, minutes=0, treats=13)
     >>> parse_activity("o 21d 18h 7m 104")
     Activity(victories=0, days=21, hours=18, minutes=7, treats=104)
+    >>> parse_activity("6 13d 11h im 43")
+    Activity(victories=6, days=13, hours=11, minutes=1, treats=43)
     >>> parse_activity("o 21d 18h 7n 104") is None
     True
     """
