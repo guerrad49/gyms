@@ -347,7 +347,7 @@ class BadgeReader:
         text = normalize_title(result.text)
         if not text:
             return None
-        dropped = tuple(w.text for w in raw.words if w.is_junk)
+        dropped = raw.junk()
         return TitleCandidate(text, result.confidence, variant.name, dropped)
 
     def _read_activity_text(self, image: Image, profile: DeviceProfile) -> str:

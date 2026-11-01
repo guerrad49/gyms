@@ -134,3 +134,37 @@ def test_real_tesseract_reads_a_title_crop() -> None:
     crop = crop_rows(load_image(case.path), 50, 140)
     text = TesseractEngine().read(binarize(crop, 1.75)).text
     assert text.strip().lower() == "starbucks"
+
+
+def test_a_bar_between_words_is_a_capital_i() -> None:
+    """From the benchmark: the game's capital I is read as ``|``."""
+    ocr = result(
+        ("edgemont", 90),
+        ("world", 90),
+        ("war", 90),
+        ("|", 60),
+        ("memorial", 90),
+    )
+    assert ocr.without_junk().text == "edgemont world war i memorial"
+    assert ocr.junk() == ()
+
+
+@pytest.mark.parametrize(
+    "words",
+    [
+        [("|", 50), ("reserve", 90), ("the", 90)],  # could be the border
+        [("church", 90), ("of", 90), ("|", 50)],
+        [("|", 50), ("_", 20), ("|", 40)],  # nothing real around them
+        [("|", 50)],
+    ],
+)
+def test_a_bar_at_the_edge_stays_noise(words: list[tuple[str, float]]) -> None:
+    ocr = result(*words)
+    assert "i" not in ocr.without_junk().text.split()
+    assert "|" in ocr.junk()
+
+
+def test_junk_lists_only_what_was_actually_discarded() -> None:
+    ocr = result(("_", 5), ("world", 90), ("|", 60), ("war", 90), ("\u00ab", 3))
+    assert ocr.without_junk().text == "world i war"
+    assert ocr.junk() == ("_", "\u00ab")

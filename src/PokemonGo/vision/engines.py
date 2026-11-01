@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import shutil
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Final, Protocol
 
 import pytesseract
@@ -103,20 +103,59 @@ class OcrResult:
             return 0.0
         return sum(w.confidence for w in self.words) / len(self.words)
 
+    def _split(self) -> tuple[list[OcrWord], list[str]]:
+        """Separate meaningful words from noise.
+
+        A lone ``|`` between two real words is kept, as the letter ``i``:
+        the game's capital I is drawn as a bar, and Tesseract returns it
+        as ``|`` (``"world war | memorial"``). At either end of the text
+        a bar is more likely the screen border, so it stays noise.
+        """
+        real = [not w.is_junk and w.text != "|" for w in self.words]
+        kept: list[OcrWord] = []
+        dropped: list[str] = []
+        for index, word in enumerate(self.words):
+            if word.text == "|" and any(real[:index]) and any(real[index:]):
+                kept.append(replace(word, text="i"))
+            elif word.is_junk:
+                dropped.append(word.text)
+            else:
+                kept.append(word)
+        return kept, dropped
+
     def without_junk(self) -> OcrResult:
-        """Drop words that contain no letters or digits.
+        """Drop words that are OCR noise.
 
         Stray marks such as ``_`` or ``«©`` come from the phone's status
         bar. Removing them before scoring stops one junk word from
         dragging an otherwise perfect reading down. Real title
-        punctuation (``&``, ``-``, ``:``) is kept.
+        punctuation (``&``, ``-``, ``:``) is kept, and a ``|`` between
+        words becomes the letter ``i``.
 
         Returns
         -------
         OcrResult
             A result with only the meaningful words.
+
+        Examples
+        --------
+        >>> noisy = OcrResult(
+        ...     (OcrWord("world", 90), OcrWord("|", 50), OcrWord("war", 90))
+        ... )
+        >>> noisy.without_junk().text
+        'world i war'
         """
-        return OcrResult(tuple(w for w in self.words if not w.is_junk))
+        return OcrResult(tuple(self._split()[0]))
+
+    def junk(self) -> tuple[str, ...]:
+        """List the words :meth:`without_junk` discards.
+
+        Returns
+        -------
+        tuple of str
+            The discarded words, for diagnostics.
+        """
+        return tuple(self._split()[1])
 
 
 class OcrEngine(Protocol):
