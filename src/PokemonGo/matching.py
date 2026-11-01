@@ -62,11 +62,18 @@ def _numbers(text: str) -> list[str]:
     return re.findall(r"\d+", text)
 
 
+def _fold(text: str) -> str:
+    """Treat ``l`` as ``i``: the game's font draws a capital I as an l."""
+    return text.replace("l", "i")
+
+
 def similarity(a: str, b: str) -> float:
     """Measure how alike two titles are, from 0 to 1.
 
     Both titles are normalized first (see
-    :func:`PokemonGo.parsing.normalize_title`).
+    :func:`PokemonGo.parsing.normalize_title`), and the letters ``l`` and
+    ``i`` are treated as the same, because OCR reads the capital I of
+    ``"Irony"`` or ``"II Tower"`` as a lowercase ``l``.
 
     Parameters
     ----------
@@ -84,9 +91,14 @@ def similarity(a: str, b: str) -> float:
     1.0
     >>> round(similarity("starbucks", "starbuck5"), 2)
     0.89
+    >>> similarity("irony", "lrony")
+    1.0
     """
     matcher = SequenceMatcher(
-        None, normalize_title(a), normalize_title(b), autojunk=False
+        None,
+        _fold(normalize_title(a)),
+        _fold(normalize_title(b)),
+        autojunk=False,
     )
     return matcher.ratio()
 

@@ -127,3 +127,24 @@ def test_nearby_duplicates_respects_radius_and_title() -> None:
     assert [g.uid for g in found] == [1]
     wide = nearby_duplicates("Starbucks", HERE, gyms, radius_m=5_000)
     assert [g.uid for g in wide] == [1, 2]
+
+
+@pytest.mark.parametrize(
+    ("read", "stored"),
+    [
+        ("lrony", "irony"),
+        ("ll w tower", "ii w tower"),
+        ("il w tower", "ii w tower"),
+    ],
+)
+def test_a_capital_i_read_as_l_still_matches(read: str, stored: str) -> None:
+    """From the benchmark: OCR draws the game's capital I as a lowercase l."""
+    assert similarity(read, stored) == 1.0
+    matches = find_matches(read, _gyms(stored))
+    assert [m.kind for m in matches] == [MatchKind.SIMILAR]
+
+
+def test_the_i_l_fold_never_counts_as_an_exact_match() -> None:
+    [match] = find_matches("lrony", _gyms("irony"))
+    assert match.kind is MatchKind.SIMILAR
+    assert find_matches("irony", _gyms("irony"))[0].kind is MatchKind.EXACT
