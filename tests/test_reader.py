@@ -12,6 +12,8 @@ from PokemonGo.vision.reader import (
     TITLE_VARIANTS,
     BadgeReader,
     TitleCandidate,
+    drop_contaminated,
+    has_status_bar,
     rank_titles,
 )
 from tests.support.engines import ScriptedEngine, lines, result
@@ -48,10 +50,9 @@ def test_blind_ranking_drops_noise_and_prefers_confidence() -> None:
         ]
     )
     reading = BadgeReader(engine).read_image(_image(I15))
-    assert [t.text for t in reading.titles] == [
-        "starbucks",
-        "st verizon 17:57 starbucks",
-    ]
+    # The "tall" reading is the clean one plus status-bar text, so it is
+    # dropped even though it appeared in the candidates.
+    assert [t.text for t in reading.titles] == ["starbucks"]
     assert reading.title is not None
     assert reading.title.variant == "default"  # the earlier of equal reads
     assert reading.title.confidence == 96.0
@@ -168,3 +169,111 @@ def test_rank_titles_with_known_titles_uses_closeness_first() -> None:
 
 def test_rank_titles_of_nothing_is_empty() -> None:
     assert rank_titles([]) == ()
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("17:16 7 al horace ashenfelter", True),
+        ("st verizon 16:56 v7 69% a kingdom hall", True),
+        ("11:58 njit", True),
+        ("horace ashenfelter", False),
+        ("100% juice bar", True),  # a known limitation: looks like a battery
+        ("route 17", False),
+        ("", False),
+    ],
+)
+def test_status_bar_detection(text: str, expected: bool) -> None:
+    assert has_status_bar(text) is expected
+
+
+def _c(text: str, confidence: float, variant: str = "x") -> TitleCandidate:
+    return TitleCandidate(text, confidence, variant)
+
+
+@pytest.mark.parametrize(
+    ("clean", "noisy"),
+    [
+        # Real rows from the 1,191-badge benchmark (gym ids in comments).
+        (
+            "horace ashenfelter commemorative plaque",  # 1030
+            "17:16 7 al horace ashenfelter commemorative plaque",
+        ),
+        (
+            "kingdom hall of jehovah's witness",  # 377
+            "st verizon 16:56 v7 69% a kingdom hall of jehovah's witness",
+        ),
+        (
+            "st.paul's church",  # 845
+            "st verizon 17:57 7 85% a st.paul's church",
+        ),
+        ("njit", "11:58 njit"),  # 984
+        ("world war ii memorial", "12:38 9 al world war ii memorial"),  # 981
+    ],
+)
+def test_a_noisy_reading_loses_to_the_same_words_read_cleanly(
+    clean: str, noisy: str
+) -> None:
+    good = _c(clean, 70.0, "default")
+    bad = _c(noisy, 92.0, "tall")  # more confident, as in the benchmark
+    assert drop_contaminated([bad, good]) == [good]
+    reading = rank_titles(drop_contaminated([bad, good]))
+    assert reading[0].text == clean
+
+
+def test_a_truncated_clean_reading_does_not_displace_the_full_title() -> None:
+    """A two-line title whose first line is only read with the clock."""
+    full = _c("12:29 church of jesus christ of latter-day saints", 72.0)
+    truncated = _c("latter-day saints", 90.0, "default")
+    assert drop_contaminated([full, truncated]) == [full, truncated]
+
+
+def test_a_noisy_reading_is_kept_when_nothing_clean_exists() -> None:
+    only = _c("11:58 njit", 92.0)
+    assert drop_contaminated([only]) == [only]
+    assert drop_contaminated([]) == []
+
+
+def test_contamination_tolerates_one_missing_word_but_not_two() -> None:
+    noisy = _c("12:00 alpha beta gamma delta", 90.0)
+    one_short = _c("alpha beta gamma", 80.0)
+    two_short = _c("alpha beta", 80.0)
+    assert drop_contaminated([noisy, one_short]) == [one_short]
+    assert drop_contaminated([noisy, two_short]) == [noisy, two_short]
+
+
+def test_the_reader_prefers_a_clean_reading_to_a_confident_noisy_one() -> None:
+    engine = ScriptedEngine(
+        [
+            result(("horace", 70), ("ashenfelter", 70), ("plaque", 70)),
+            result(
+                ("17:16", 90),
+                ("7", 60),
+                ("al", 60),
+                ("horace", 90),
+                ("ashenfelter", 90),
+                ("plaque", 90),
+            ),
+            result(),
+            result(),
+            ACTIVITY,
+        ]
+    )
+    reading = BadgeReader(engine).read_image(_image(I15))
+    assert reading.title is not None
+    assert reading.title.text == "horace ashenfelter plaque"
+
+
+def test_discarded_noise_words_are_recorded_for_diagnostics() -> None:
+    engine = ScriptedEngine(
+        [
+            result(("_", 5), ("MSU", 90), ("\u00ab\u00a9", 4), ("Hall", 90)),
+            ACTIVITY,
+        ]
+    )
+    reading = BadgeReader(engine).read_image(
+        _image(I15), known_titles=["msu hall"]
+    )
+    assert reading.title is not None
+    assert reading.title.text == "msu hall"
+    assert reading.title.dropped == ("_", "\u00ab\u00a9")

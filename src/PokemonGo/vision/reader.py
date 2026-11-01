@@ -10,6 +10,7 @@ engine's confidence does.
 
 from __future__ import annotations
 
+import re
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -70,11 +71,16 @@ class TitleCandidate:
         Mean word confidence from 0 to 100, OCR noise excluded.
     variant : str
         Name of the :class:`TitleVariant` that produced it.
+    dropped : tuple of str
+        Words the OCR engine returned that were discarded as noise. Kept
+        for diagnostics: if a title is missing a character, this shows
+        whether the engine saw it.
     """
 
     text: str
     confidence: float
     variant: str
+    dropped: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -103,6 +109,97 @@ class BadgeReading:
     def title(self) -> TitleCandidate | None:
         """The best title reading, or ``None`` if nothing was read."""
         return self.titles[0] if self.titles else None
+
+
+_CLOCK: Final = re.compile(r"^\d{1,2}:\d{2}$")
+_BATTERY: Final = re.compile(r"^\d{1,3}%$")
+
+
+def _is_status_token(token: str) -> bool:
+    """Return whether a word looks like a clock or battery reading."""
+    return bool(_CLOCK.match(token) or _BATTERY.match(token))
+
+
+def has_status_bar(text: str) -> bool:
+    """Return whether a reading includes the phone's clock or battery.
+
+    A gym title essentially never contains ``17:57`` or ``85%``, so
+    these words mean the crop caught the status bar.
+
+    Parameters
+    ----------
+    text : str
+        A normalized title reading.
+
+    Returns
+    -------
+    bool
+        ``True`` if any word is a clock time or a percentage.
+
+    Examples
+    --------
+    >>> has_status_bar("17:16 7 al horace ashenfelter")
+    True
+    >>> has_status_bar("horace ashenfelter")
+    False
+    """
+    return any(_is_status_token(token) for token in text.split())
+
+
+def _content_words(text: str) -> frozenset[str]:
+    """Return the words of three or more characters, minus status text."""
+    return frozenset(
+        token
+        for token in text.split()
+        if len(token) >= 3 and not _is_status_token(token)
+    )
+
+
+def drop_contaminated(
+    candidates: Sequence[TitleCandidate],
+) -> list[TitleCandidate]:
+    """Drop readings that are a clean reading plus status-bar text.
+
+    A "tall" crop sometimes reads ``"17:16 7 al horace ashenfelter
+    commemorative plaque"`` a point or two more confidently than the clean
+    ``"horace ashenfelter commemorative plaque"``. A contaminated reading
+    is dropped only when a clean one has the same words (at most one
+    fewer), so a clean reading that is merely a *truncated* title never
+    displaces a contaminated reading that has the whole title.
+
+    Parameters
+    ----------
+    candidates : sequence of TitleCandidate
+        The readings, in variant order.
+
+    Returns
+    -------
+    list of TitleCandidate
+        The readings that remain, in the same order.
+
+    Examples
+    --------
+    >>> clean = TitleCandidate("njit", 91.0, "default")
+    >>> noisy = TitleCandidate("11:58 njit", 92.0, "tall")
+    >>> drop_contaminated([noisy, clean]) == [clean]
+    True
+    """
+    clean_words = [
+        words
+        for c in candidates
+        if not has_status_bar(c.text) and (words := _content_words(c.text))
+    ]
+    kept: list[TitleCandidate] = []
+    for candidate in candidates:
+        if has_status_bar(candidate.text):
+            words = _content_words(candidate.text)
+            if any(
+                clean <= words and len(clean) >= len(words) - 1
+                for clean in clean_words
+            ):
+                continue
+        kept.append(candidate)
+    return kept
 
 
 def rank_titles(
@@ -230,7 +327,9 @@ class BadgeReader:
         activity_text = self._read_activity_text(image, profile)
         return BadgeReading(
             profile=profile,
-            titles=rank_titles(found.values(), known_titles),
+            titles=rank_titles(
+                drop_contaminated(list(found.values())), known_titles
+            ),
             activity_text=activity_text,
             activity=parse_activity(activity_text),
         )
@@ -243,12 +342,13 @@ class BadgeReader:
         crop = crop_rows(image, start - variant.north_offset, end)
         if variant.inpaint:
             crop = inpaint_status_bar(crop)
-        result = self._engine.read(binarize(crop, profile.scale))
-        result = result.without_junk()
+        raw = self._engine.read(binarize(crop, profile.scale))
+        result = raw.without_junk()
         text = normalize_title(result.text)
         if not text:
             return None
-        return TitleCandidate(text, result.confidence, variant.name)
+        dropped = tuple(w.text for w in raw.words if w.is_junk)
+        return TitleCandidate(text, result.confidence, variant.name, dropped)
 
     def _read_activity_text(self, image: Image, profile: DeviceProfile) -> str:
         """Return the raw text of the statistics area."""
