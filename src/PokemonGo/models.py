@@ -9,7 +9,7 @@ layer.
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date
 from enum import Enum
 from typing import Final
@@ -194,6 +194,11 @@ class Gym:
         Free text.
     image_sha256 : str, optional
         SHA-256 of the screenshot, used to skip images already processed.
+    row : int, optional
+        Where the store keeps this gym (the spreadsheet row number, or
+        the database row id). Stores set it; it is how a gym is updated
+        in place, including a seeded one that has no ``uid`` yet. It is
+        ignored when comparing gyms.
 
     Examples
     --------
@@ -218,6 +223,7 @@ class Gym:
     scanned_at: date | None = None
     notes: str = ""
     image_sha256: str = ""
+    row: int | None = field(default=None, compare=False, repr=False)
 
     @property
     def is_seeded(self) -> bool:

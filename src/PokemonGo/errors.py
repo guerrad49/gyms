@@ -36,3 +36,14 @@ class ImageReadError(PogoError):
 
 class OcrError(PogoError):
     """The OCR engine is missing or failed."""
+
+
+class StoreError(PogoError):
+    """A gym database could not be read or written."""
+
+
+class SchemaError(StoreError):
+    """A database does not have the current column layout.
+
+    The message says what to do, usually "run ``pogo upgrade``".
+    """

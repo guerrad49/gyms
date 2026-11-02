@@ -105,3 +105,9 @@ def test_gym_flags_are_not_duplicated() -> None:
 def test_errors_share_a_base_class() -> None:
     assert issubclass(ParseError, PogoError)
     assert issubclass(ParseError, ValueError)
+
+
+def test_the_row_handle_is_ignored_when_comparing_gyms() -> None:
+    assert Gym(1, "a", row=3) == Gym(1, "a", row=9)
+    assert Gym(1, "a", row=3) != Gym(2, "a", row=3)
+    assert "row" not in repr(Gym(1, "a", row=3))
