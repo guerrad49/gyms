@@ -11,6 +11,7 @@ backups/
 /*.csv
 pogo.log
 *.log
+geocode_cache.json
 
 # Python
 __pycache__/

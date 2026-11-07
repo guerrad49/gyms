@@ -39,9 +39,10 @@ _KEYS: Final = {
     "DB_PATH": "db_path",
     "CSV_PATH": "csv_path",
     "PHONE_MODEL": "phone_model",
+    "GEOCODE_CACHE": "geocode_cache",
 }
 _PATH_FIELDS: Final = frozenset(
-    {"source", "badges", "json_key", "db_path", "csv_path"}
+    {"source", "badges", "json_key", "db_path", "csv_path", "geocode_cache"}
 )
 
 
@@ -82,6 +83,9 @@ class Settings:
         CSV database file (csv backend).
     phone_model : str, optional
         Force a phone profile instead of detecting it from the image.
+    geocode_cache : pathlib.Path, optional
+        File that remembers address lookups, so each place is only looked
+        up once.
 
     Examples
     --------
@@ -103,6 +107,7 @@ class Settings:
     db_path: Path | None = None
     csv_path: Path | None = None
     phone_model: str | None = None
+    geocode_cache: Path = Path("geocode_cache.json")
 
     @classmethod
     def load(

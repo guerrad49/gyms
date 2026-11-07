@@ -130,3 +130,13 @@ def test_validation_passes_for_a_complete_local_setup() -> None:
 def test_email_can_be_waived() -> None:
     settings = Settings(backend=Backend.SQLITE, db_path=Path("g.db"))
     assert settings.validate(need_email=False) is settings
+
+
+def test_the_geocode_cache_has_a_default_and_can_be_set(tmp_path: Path) -> None:
+    assert Settings.load().geocode_cache == Path("geocode_cache.json")
+    env = _write(tmp_path / "v.env", "GEOCODE_CACHE=cache/places.json\n")
+    assert Settings.load(env_file=env).geocode_cache == (
+        tmp_path / "cache" / "places.json"
+    )
+    from_environment = Settings.load(environ={"POGO_GEOCODE_CACHE": "c.json"})
+    assert from_environment.geocode_cache == Path("c.json")

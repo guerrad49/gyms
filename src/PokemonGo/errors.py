@@ -47,3 +47,11 @@ class SchemaError(StoreError):
 
     The message says what to do, usually "run ``pogo upgrade``".
     """
+
+
+class GeocodingError(PogoError):
+    """An address lookup failed for a reason other than "no address here".
+
+    Raised after retries are exhausted, or at once for errors that retrying
+    cannot fix (a blocked user agent, a malformed request).
+    """
