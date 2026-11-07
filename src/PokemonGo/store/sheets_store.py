@@ -7,12 +7,19 @@ the tests fake, so the logic here is tested without a network.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from pathlib import Path
-from typing import Protocol
+from typing import TYPE_CHECKING, Literal, Protocol, cast
 
 from PokemonGo.errors import ConfigError, StoreError
 from PokemonGo.store.schema import COLUMNS, Cell, text
 from PokemonGo.store.table import RawTable, TableStore
+
+if TYPE_CHECKING:
+    import gspread
+
+SortOrder = Literal["asc", "des"]
+"""The sort directions ``gspread`` accepts (note: ``"des"``, not ``"desc"``)."""
 
 BATCH = 200
 """Rows written per API request."""
@@ -21,7 +28,9 @@ BATCH = 200
 class Worksheet(Protocol):
     """The part of a ``gspread`` worksheet this module uses."""
 
-    col_count: int
+    @property
+    def col_count(self) -> int:
+        """The number of columns the sheet currently has."""
 
     def get_all_values(self) -> list[list[object]]:
         """Return every row of the sheet, including the header."""
@@ -35,11 +44,47 @@ class Worksheet(Protocol):
     def append_rows(self, values: list[list[object]]) -> object:
         """Add rows after the last row that has data."""
 
-    def add_cols(self, cols: int) -> object:
+    def add_cols(self, cols: int) -> None:
         """Add empty columns to the right."""
 
-    def sort(self, *specs: tuple[int, str], range: str) -> object:
+    def sort(self, *specs: tuple[int, SortOrder], range: str) -> object:
         """Sort a range by columns, given as ``(column number, "asc")``."""
+
+
+class _GspreadWorksheet:
+    """Adapts a real ``gspread`` worksheet to :class:`Worksheet`.
+
+    ``gspread`` is stricter than the interface the store needs (cells must
+    be ``str | int | float``, and the sort order a literal), and exposes
+    ``col_count`` read-only. Translating here keeps that library-specific
+    typing in one place.
+    """
+
+    def __init__(self, sheet: gspread.Worksheet) -> None:
+        self._sheet = sheet
+
+    @property
+    def col_count(self) -> int:
+        return int(self._sheet.col_count)
+
+    def get_all_values(self) -> list[list[object]]:
+        return [list(row) for row in self._sheet.get_all_values()]
+
+    def update(self, *, range_name: str, values: list[list[object]]) -> object:
+        return self._sheet.update(values=values, range_name=range_name)
+
+    def batch_update(self, data: list[dict[str, object]]) -> object:
+        return self._sheet.batch_update(data)
+
+    def append_rows(self, values: list[list[object]]) -> object:
+        cells = cast("Sequence[Sequence[str | int | float]]", values)
+        return self._sheet.append_rows(cells)
+
+    def add_cols(self, cols: int) -> None:
+        self._sheet.add_cols(cols)
+
+    def sort(self, *specs: tuple[int, SortOrder], range: str) -> object:
+        return self._sheet.sort(*specs, range=range)
 
 
 def column_letter(number: int) -> str:
@@ -89,11 +134,11 @@ def open_worksheet(key_path: Path, sheet_name: str) -> Worksheet:
         raise ConfigError(msg) from error
     try:
         client = gspread.service_account(filename=str(key_path))
-        sheet: Worksheet = client.open(sheet_name).sheet1
+        sheet = client.open(sheet_name).sheet1
     except (OSError, ValueError, gspread.exceptions.GSpreadException) as error:
         msg = f"cannot open spreadsheet {sheet_name!r}: {error!r}"
         raise StoreError(msg) from error
-    return sheet
+    return _GspreadWorksheet(sheet)
 
 
 def read_sheet_table(sheet: Worksheet) -> RawTable:
@@ -176,7 +221,7 @@ class SheetsStore(TableStore):
         """
         self.commit()
         last = column_letter(len(self._header))
-        specs = tuple(
+        specs: tuple[tuple[int, SortOrder], ...] = tuple(
             (self._col[name] + 1, "asc")
             for name in ("state", "county", "city", "title")
         )

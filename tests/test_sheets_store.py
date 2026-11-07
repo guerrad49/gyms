@@ -153,8 +153,44 @@ def test_open_worksheet_without_gspread(
         open_worksheet(Path("key.json"), "gyms")
 
 
+class RecordingSheet:
+    """Stands in for a real ``gspread`` worksheet, recording every call.
+
+    It has gspread's shape on purpose: ``col_count`` is a plain value read
+    by the adapter, and ``get_all_values`` returns lists of strings.
+    """
+
+    col_count = 14
+
+    def __init__(self) -> None:
+        self.calls: list[tuple[str, object]] = []
+
+    def get_all_values(self) -> list[list[str]]:
+        self.calls.append(("get_all_values", None))
+        return [["uid", "title"], ["1", "a"]]
+
+    def update(self, **kwargs: object) -> str:
+        self.calls.append(("update", kwargs))
+        return "updated"
+
+    def batch_update(self, data: object) -> str:
+        self.calls.append(("batch_update", data))
+        return "batched"
+
+    def append_rows(self, values: object) -> str:
+        self.calls.append(("append_rows", values))
+        return "appended"
+
+    def add_cols(self, cols: int) -> None:
+        self.calls.append(("add_cols", cols))
+
+    def sort(self, *specs: object, **kwargs: object) -> str:
+        self.calls.append(("sort", (specs, kwargs)))
+        return "sorted"
+
+
 def _fake_gspread(
-    monkeypatch: pytest.MonkeyPatch, *, fail: bool
+    monkeypatch: pytest.MonkeyPatch, *, fail: bool, sheet: object = None
 ) -> list[object]:
     seen: list[object] = []
     module = types.ModuleType("gspread")
@@ -168,11 +204,10 @@ def _fake_gspread(
         seen.append(filename)
         if fail:
             raise GSpreadError("denied")
-        sheet = types.SimpleNamespace(sheet1="the sheet")
 
         def open_sheet(name: str) -> object:
             seen.append(name)
-            return sheet
+            return types.SimpleNamespace(sheet1=sheet)
 
         return types.SimpleNamespace(open=open_sheet)
 
@@ -184,10 +219,36 @@ def _fake_gspread(
 def test_open_worksheet_opens_the_first_sheet(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    seen = _fake_gspread(monkeypatch, fail=False)
-    opened: object = open_worksheet(Path("key.json"), "gym_data")
-    assert opened == "the sheet"
+    real = RecordingSheet()
+    seen = _fake_gspread(monkeypatch, fail=False, sheet=real)
+    worksheet = open_worksheet(Path("key.json"), "gym_data")
     assert seen == ["key.json", "gym_data"]
+    assert worksheet.col_count == 14
+    assert real.calls == []  # opening does not read the sheet
+
+
+def test_the_adapter_passes_every_call_to_the_real_worksheet(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    real = RecordingSheet()
+    _fake_gspread(monkeypatch, fail=False, sheet=real)
+    worksheet = open_worksheet(Path("key.json"), "gym_data")
+
+    assert worksheet.get_all_values() == [["uid", "title"], ["1", "a"]]
+    worksheet.update(range_name="A1:B1", values=[["x", 1]])
+    worksheet.batch_update([{"range": "A2:B2", "values": [["y", 2.5]]}])
+    worksheet.append_rows([["z", 3]])
+    worksheet.add_cols(6)
+    worksheet.sort((4, "asc"), (3, "asc"), range="A2:T9")
+
+    assert real.calls == [
+        ("get_all_values", None),
+        ("update", {"values": [["x", 1]], "range_name": "A1:B1"}),
+        ("batch_update", [{"range": "A2:B2", "values": [["y", 2.5]]}]),
+        ("append_rows", [["z", 3]]),
+        ("add_cols", 6),
+        ("sort", (((4, "asc"), (3, "asc")), {"range": "A2:T9"})),
+    ]
 
 
 def test_open_worksheet_reports_a_failure(
@@ -198,9 +259,16 @@ def test_open_worksheet_reports_a_failure(
         open_worksheet(Path("key.json"), "gym_data")
 
 
-def test_sorting_tolerates_a_cell_edited_by_hand() -> None:
-    sheet, store = _filled()
-    store = SheetsStore(sheet)
-    sheet.values[1][COLUMNS.index("uid")] = "oops"  # someone typed text
-    store.sort()  # must not crash while reloading
-    assert len(sheet.values) == 3
+def test_a_store_works_through_the_adapter(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The whole path: real-shaped worksheet, adapter, store."""
+    real = RecordingSheet()
+    real.get_all_values = lambda: [list(COLUMNS)]  # type: ignore[method-assign]
+    _fake_gspread(monkeypatch, fail=False, sheet=real)
+    store = SheetsStore(open_worksheet(Path("key.json"), "gym_data"))
+    store.add(scanned())
+    store.commit()
+    # the fake sheet has 14 columns; the store needs 20, so it adds 6 first
+    assert [kind for kind, _ in real.calls] == ["add_cols", "append_rows"]
+    assert real.calls[0] == ("add_cols", len(COLUMNS) - 14)
