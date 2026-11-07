@@ -1,0 +1,41 @@
+# Secrets and personal data (the repository is public)
+requirements/variables.env
+variables.env
+requirements/*.json
+*.json.key
+badges/
+backups/
+*.db
+*.sqlite
+*.sqlite3
+/*.csv
+pogo.log
+*.log
+geocode_cache.json
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+build/
+dist/
+.eggs/
+
+# Tooling
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# Docs
+docs/_build/
+docs/generated/
+
+# Editors and OS
+.DS_Store
+.idea/
+.vscode/
