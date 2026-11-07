@@ -1,6 +1,7 @@
 """Command-line entry point for the ``pogo`` tool.
 
-Implemented so far: ``pogo eval`` (the OCR benchmark) and ``--version``.
+Implemented so far: ``eval``, ``upgrade``, ``migrate``, ``export``,
+``resolve`` and ``--version``.
 The remaining sub-commands described in ``PLAN.md`` section 9 arrive in
 later phases.
 """
@@ -129,6 +130,29 @@ def build_parser() -> argparse.ArgumentParser:
         dest="target",
         required=True,
         choices=[b.value for b in Backend],
+    )
+
+    resolve = commands.add_parser(
+        "resolve",
+        help="fill in missing addresses from coordinates",
+        description=(
+            "Look up the city, county, state and country of gyms that have "
+            "coordinates but no city or state. Existing values are never "
+            "overwritten."
+        ),
+    )
+    _add_store_options(resolve)
+    resolve.add_argument(
+        "--dry-run", action="store_true", help="look up but do not save"
+    )
+    resolve.add_argument("--limit", type=int, help="look up at most N gyms")
+    resolve.add_argument(
+        "--cache",
+        type=Path,
+        help="file remembering lookups (default: geocode_cache.json)",
+    )
+    resolve.add_argument(
+        "--no-cache", action="store_true", help="do not read or write a cache"
     )
 
     export = commands.add_parser("export", help="export the database")
@@ -262,6 +286,42 @@ def _run_export(args: argparse.Namespace) -> int:
     return 0
 
 
+def _run_resolve(args: argparse.Namespace) -> int:
+    """Fill in missing city, county, state and country from coordinates."""
+    from PokemonGo.geo import (
+        CachedGeocoder,
+        build_geocoder,
+        format_resolve_summary,
+        resolve_addresses,
+    )
+    from PokemonGo.store import open_store
+
+    settings = _settings(args)
+    cache = None if args.no_cache else (args.cache or settings.geocode_cache)
+    geocoder = build_geocoder(settings.email, cache)
+    store = open_store(settings)
+
+    def progress(done: int, total: int) -> None:
+        if done % 25 == 0 or done == total:
+            print(f"  {done}/{total}", file=sys.stderr)
+
+    try:
+        summary = resolve_addresses(
+            store,
+            geocoder,
+            limit=args.limit,
+            dry_run=args.dry_run,
+            progress=progress,
+        )
+        if not args.dry_run:
+            store.commit()  # keeps what was done even if the run stopped
+    finally:
+        if isinstance(geocoder, CachedGeocoder):
+            geocoder.flush()
+    print(format_resolve_summary(summary, dry_run=args.dry_run))
+    return 1 if summary.error else 0
+
+
 def _run_eval(args: argparse.Namespace) -> int:
     """Run the ``eval`` command and print its report."""
     from PokemonGo.evaluate import (
@@ -319,6 +379,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     try:
         if args.command == "eval":
             return _run_eval(args)
+        if args.command == "resolve":
+            return _run_resolve(args)
         if args.command == "upgrade":
             return _run_upgrade(args)
         if args.command == "migrate":
