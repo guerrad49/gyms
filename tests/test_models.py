@@ -111,3 +111,11 @@ def test_the_row_handle_is_ignored_when_comparing_gyms() -> None:
     assert Gym(1, "a", row=3) == Gym(1, "a", row=9)
     assert Gym(1, "a", row=3) != Gym(2, "a", row=3)
     assert "row" not in repr(Gym(1, "a", row=3))
+
+
+def test_coordinates_are_always_floats() -> None:
+    point = Coordinates(40, -75)
+    assert isinstance(point.latitude, float)
+    assert isinstance(point.longitude, float)
+    assert str(point) == "40.0,-75.0"
+    assert point == Coordinates(40.0, -75.0)

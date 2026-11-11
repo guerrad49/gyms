@@ -138,10 +138,17 @@ class Coordinates:
     ValueError
         If a value is not finite or is out of range.
 
+    Notes
+    -----
+    Both values are stored as ``float``, so ``Coordinates(40, -75)`` looks
+    the same as one read back from a file.
+
     Examples
     --------
     >>> str(Coordinates(40.758186, -73.985585))
     '40.758186,-73.985585'
+    >>> str(Coordinates(40, -75))
+    '40.0,-75.0'
     >>> Coordinates(91, 0)
     Traceback (most recent call last):
         ...
@@ -161,6 +168,8 @@ class Coordinates:
                 msg = f"{name} must be within -{limit} and {limit}, "
                 msg += f"got {value:g}"
                 raise ValueError(msg)
+        object.__setattr__(self, "latitude", float(self.latitude))
+        object.__setattr__(self, "longitude", float(self.longitude))
 
     def __str__(self) -> str:
         """Format as ``lat,lon`` with no space, as in the old sheet."""
@@ -256,6 +265,16 @@ class Gym:
             ``True`` if the flag is in ``status``.
         """
         return flag in self.status
+
+    def remove_flag(self, flag: Flag) -> None:
+        """Clear a review flag if it is set.
+
+        Parameters
+        ----------
+        flag : Flag
+            The flag to remove.
+        """
+        self.status = tuple(f for f in self.status if f is not flag)
 
     def add_flag(self, flag: Flag) -> None:
         """Set a review flag, keeping ``status`` free of duplicates.
