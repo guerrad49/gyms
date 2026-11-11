@@ -1,5 +1,6 @@
 import sys
 import types
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -10,6 +11,7 @@ from PokemonGo.store import sheets_store
 from PokemonGo.store.schema import COLUMNS
 from PokemonGo.store.sheets_store import (
     SheetsStore,
+    _GspreadWorksheet,
     column_letter,
     open_worksheet,
     read_sheet_table,
@@ -198,7 +200,9 @@ def _fake_gspread(
     class GSpreadError(Exception):
         pass
 
-    module.exceptions = types.SimpleNamespace(GSpreadException=GSpreadError)  # type: ignore[attr-defined]
+    module.exceptions = types.SimpleNamespace(  # type: ignore[attr-defined]
+        GSpreadException=GSpreadError, APIError=FakeApiError
+    )
 
     def service_account(filename: str) -> object:
         seen.append(filename)
@@ -272,3 +276,111 @@ def test_a_store_works_through_the_adapter(
     # the fake sheet has 14 columns; the store needs 20, so it adds 6 first
     assert [kind for kind, _ in real.calls] == ["add_cols", "append_rows"]
     assert real.calls[0] == ("add_cols", len(COLUMNS) - 14)
+
+
+class FakeApiError(Exception):
+    """Has what gspread's APIError has: an integer ``code``."""
+
+    def __init__(self, code: int) -> None:
+        super().__init__({"code": code, "message": f"error {code}"})
+        self.code = code
+
+
+class FlakySheet(RecordingSheet):
+    """Fails with the given codes first, then behaves normally."""
+
+    def __init__(self, *codes: int) -> None:
+        super().__init__()
+        self.codes = list(codes)
+
+    def _maybe_fail(self) -> None:
+        if self.codes:
+            raise FakeApiError(self.codes.pop(0))
+
+    def update(self, **kwargs: object) -> str:
+        self._maybe_fail()
+        return super().update(**kwargs)
+
+    def get_all_values(self) -> list[list[str]]:
+        self._maybe_fail()
+        return super().get_all_values()
+
+    def batch_update(self, data: object) -> str:
+        self._maybe_fail()
+        return super().batch_update(data)
+
+    def append_rows(self, values: object) -> str:
+        self._maybe_fail()
+        return super().append_rows(values)
+
+    def add_cols(self, cols: int) -> None:
+        self._maybe_fail()
+        super().add_cols(cols)
+
+    def sort(self, *specs: object, **kwargs: object) -> str:
+        self._maybe_fail()
+        return super().sort(*specs, **kwargs)
+
+
+def _adapter(sheet: RecordingSheet) -> tuple[_GspreadWorksheet, list[float]]:
+    waits: list[float] = []
+    adapter = _GspreadWorksheet(
+        sheet,  # type: ignore[arg-type]
+        FakeApiError,
+        sleep=waits.append,
+    )
+    return adapter, waits
+
+
+def test_a_used_up_quota_is_retried_with_growing_waits() -> None:
+    adapter, waits = _adapter(FlakySheet(429, 429))
+    assert adapter.append_rows([["a"]]) == "appended"
+    assert waits == [5.0, 10.0]
+
+
+@pytest.mark.parametrize("code", [500, 502, 503, 504])
+def test_google_hiccups_are_retried(code: int) -> None:
+    adapter, waits = _adapter(FlakySheet(code))
+    adapter.update(range_name="A1", values=[["x"]])
+    assert waits == [5.0]
+
+
+def test_every_method_is_retried() -> None:
+    calls: list[Callable[[_GspreadWorksheet], object]] = [
+        lambda a: a.get_all_values(),
+        lambda a: a.update(range_name="A1", values=[["x"]]),
+        lambda a: a.batch_update([]),
+        lambda a: a.append_rows([["x"]]),
+        lambda a: a.add_cols(1),
+        lambda a: a.sort((1, "asc"), range="A2:B3"),
+    ]
+    for call in calls:
+        adapter, waits = _adapter(FlakySheet(429))
+        call(adapter)
+        assert waits == [5.0]
+
+
+def test_giving_up_after_the_last_attempt() -> None:
+    adapter, waits = _adapter(FlakySheet(*[429] * 9))
+    with pytest.raises(StoreError, match=r"request failed \(429\)"):
+        adapter.batch_update([])
+    assert waits == [5.0, 10.0, 20.0, 40.0]  # five tries, four waits
+
+
+@pytest.mark.parametrize("code", [400, 403, 404])
+def test_other_errors_fail_at_once_with_a_clear_message(code: int) -> None:
+    adapter, waits = _adapter(FlakySheet(code))
+    with pytest.raises(StoreError, match=rf"failed \({code}\)"):
+        adapter.sort((1, "asc"), range="A2:B3")
+    assert waits == []
+
+
+class BrokenSheet(RecordingSheet):
+    def get_all_values(self) -> list[list[str]]:
+        return [[str(1 / 0)]]
+
+
+def test_errors_that_are_not_api_errors_are_left_alone() -> None:
+    adapter, _ = _adapter(BrokenSheet())
+    with pytest.raises(ZeroDivisionError):
+        adapter.get_all_values()

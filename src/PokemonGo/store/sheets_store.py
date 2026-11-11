@@ -7,9 +7,11 @@ the tests fake, so the logic here is tested without a network.
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+import logging
+import time
+from collections.abc import Callable, Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING, Literal, Protocol, cast
+from typing import TYPE_CHECKING, Final, Literal, Protocol, TypeVar, cast
 
 from PokemonGo.errors import ConfigError, StoreError
 from PokemonGo.store.schema import COLUMNS, Cell, text
@@ -20,6 +22,13 @@ if TYPE_CHECKING:
 
 SortOrder = Literal["asc", "des"]
 """The sort directions ``gspread`` accepts (note: ``"des"``, not ``"desc"``)."""
+
+logger = logging.getLogger(__name__)
+
+T = TypeVar("T")
+
+RETRYABLE_CODES: Final = frozenset({429, 500, 502, 503, 504})
+"""HTTP codes worth retrying: the quota was hit, or Google had a hiccup."""
 
 BATCH = 200
 """Rows written per API request."""
@@ -58,33 +67,85 @@ class _GspreadWorksheet:
     be ``str | int | float``, and the sort order a literal), and exposes
     ``col_count`` read-only. Translating here keeps that library-specific
     typing in one place.
+
+    Every call is retried, with growing waits, when Google answers that
+    the request quota is used up (429) or that it is briefly unavailable
+    (5xx). A scan writes after every screenshot, so the per-minute write
+    quota is a real limit. Any other API error becomes a
+    :class:`~PokemonGo.errors.StoreError` with Google's message.
+
+    Parameters
+    ----------
+    sheet : gspread.Worksheet
+        The real worksheet.
+    api_error : type
+        ``gspread.exceptions.APIError``, passed in so this module never
+        imports ``gspread`` at load time.
+    attempts : int, optional
+        Tries per call.
+    backoff : float, optional
+        Seconds before the second try; doubles each time (5, 10, 20, ...).
+    sleep : callable, optional
+        Waits between tries; injectable for tests.
     """
 
-    def __init__(self, sheet: gspread.Worksheet) -> None:
+    def __init__(
+        self,
+        sheet: gspread.Worksheet,
+        api_error: type[Exception],
+        *,
+        attempts: int = 5,
+        backoff: float = 5.0,
+        sleep: Callable[[float], None] = time.sleep,
+    ) -> None:
         self._sheet = sheet
+        self._api_error = api_error
+        self._attempts = attempts
+        self._backoff = backoff
+        self._sleep = sleep
+
+    def _call(self, call: Callable[[], T]) -> T:
+        for attempt in range(1, self._attempts + 1):
+            try:
+                return call()
+            except self._api_error as error:
+                code = getattr(error, "code", None)
+                if code in RETRYABLE_CODES and attempt < self._attempts:
+                    wait = self._backoff * 2 ** (attempt - 1)
+                    logger.warning(
+                        "Google Sheets said %s; retrying in %gs", code, wait
+                    )
+                    self._sleep(wait)
+                    continue
+                msg = f"Google Sheets request failed ({code}): {error}"
+                raise StoreError(msg) from error
+        raise AssertionError  # pragma: no cover - the loop returns or raises
 
     @property
     def col_count(self) -> int:
         return int(self._sheet.col_count)
 
     def get_all_values(self) -> list[list[object]]:
-        return [list(row) for row in self._sheet.get_all_values()]
+        rows = self._call(self._sheet.get_all_values)
+        return [list(row) for row in rows]
 
     def update(self, *, range_name: str, values: list[list[object]]) -> object:
-        return self._sheet.update(values=values, range_name=range_name)
+        return self._call(
+            lambda: self._sheet.update(values=values, range_name=range_name)
+        )
 
     def batch_update(self, data: list[dict[str, object]]) -> object:
-        return self._sheet.batch_update(data)
+        return self._call(lambda: self._sheet.batch_update(data))
 
     def append_rows(self, values: list[list[object]]) -> object:
         cells = cast("Sequence[Sequence[str | int | float]]", values)
-        return self._sheet.append_rows(cells)
+        return self._call(lambda: self._sheet.append_rows(cells))
 
     def add_cols(self, cols: int) -> None:
-        self._sheet.add_cols(cols)
+        self._call(lambda: self._sheet.add_cols(cols))
 
     def sort(self, *specs: tuple[int, SortOrder], range: str) -> object:
-        return self._sheet.sort(*specs, range=range)
+        return self._call(lambda: self._sheet.sort(*specs, range=range))
 
 
 def column_letter(number: int) -> str:
@@ -138,7 +199,7 @@ def open_worksheet(key_path: Path, sheet_name: str) -> Worksheet:
     except (OSError, ValueError, gspread.exceptions.GSpreadException) as error:
         msg = f"cannot open spreadsheet {sheet_name!r}: {error!r}"
         raise StoreError(msg) from error
-    return _GspreadWorksheet(sheet)
+    return _GspreadWorksheet(sheet, gspread.exceptions.APIError)
 
 
 def read_sheet_table(sheet: Worksheet) -> RawTable:
