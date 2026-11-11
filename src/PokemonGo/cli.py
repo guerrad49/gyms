@@ -1,14 +1,13 @@
 """Command-line entry point for the ``pogo`` tool.
 
-Implemented so far: ``eval``, ``upgrade``, ``migrate``, ``export``,
-``resolve`` and ``--version``.
-The remaining sub-commands described in ``PLAN.md`` section 9 arrive in
-later phases.
+Commands: ``scan``, ``resolve``, ``upgrade``, ``migrate``, ``export``,
+``doctor`` and ``eval``.
 """
 
 from __future__ import annotations
 
 import argparse
+import logging
 import os
 import sys
 from collections.abc import Sequence
@@ -32,6 +31,7 @@ def build_parser() -> argparse.ArgumentParser:
     >>> build_parser().prog
     'pogo'
     """
+    from PokemonGo.matching import AUTO_ACCEPT
     from PokemonGo.vision.devices import profile_names
     from PokemonGo.vision.engines import ENGINES
 
@@ -132,6 +132,78 @@ def build_parser() -> argparse.ArgumentParser:
         choices=[b.value for b in Backend],
     )
 
+    scan = commands.add_parser(
+        "scan",
+        help="read gym badge screenshots into the database",
+        description=(
+            "Read screenshots of gym badges, find or create each gym, "
+            "look up its address, save it, and file the screenshot as "
+            "IMG_####.PNG. Without PATH, the source folder is scanned."
+        ),
+    )
+    _add_store_options(scan)
+    scan.add_argument(
+        "paths",
+        nargs="*",
+        type=Path,
+        metavar="PATH",
+        help="screenshots or folders to scan (default: ~/Downloads)",
+    )
+    scan.add_argument(
+        "--recursive", action="store_true", help="also search sub-folders"
+    )
+    scan.add_argument(
+        "--model",
+        choices=profile_names(),
+        help="force a phone profile instead of detecting it",
+    )
+    scan.add_argument(
+        "--badges", type=Path, help="folder to file screenshots into"
+    )
+    scan.add_argument(
+        "--non-interactive",
+        action="store_true",
+        help="never ask; leave anything uncertain for a later run",
+    )
+    scan.add_argument(
+        "--auto-accept",
+        type=_ratio,
+        default=AUTO_ACCEPT,
+        metavar="RATIO",
+        help="similarity needed to accept a title unattended "
+        "(default: %(default)s)",
+    )
+    scan.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="show what would happen; change nothing",
+    )
+    scan.add_argument(
+        "--copy",
+        action="store_true",
+        help="copy screenshots into the badges folder instead of moving them",
+    )
+    scan.add_argument(
+        "--no-sort",
+        action="store_true",
+        help="do not sort the database at the end",
+    )
+    scan.add_argument("--cache", type=Path, help="geocoding cache file")
+    scan.add_argument(
+        "--no-cache", action="store_true", help="do not use a geocoding cache"
+    )
+    scan.add_argument(
+        "-v",
+        "--verbose",
+        action="store_true",
+        help="show what was read from each screenshot",
+    )
+
+    doctor = commands.add_parser(
+        "doctor", help="check that everything needed is in place"
+    )
+    _add_store_options(doctor)
+
     resolve = commands.add_parser(
         "resolve",
         help="fill in missing addresses from coordinates",
@@ -198,10 +270,16 @@ def _settings(args: argparse.Namespace) -> Settings:
             if candidate.is_file():
                 env_file = candidate
                 break
+
+    def text(value: object) -> str | None:
+        return None if value is None else str(value)
+
     overrides = {
         "backend": args.backend,
-        "csv_path": None if args.csv_path is None else str(args.csv_path),
-        "db_path": None if args.db_path is None else str(args.db_path),
+        "csv_path": text(args.csv_path),
+        "db_path": text(args.db_path),
+        "badges": text(getattr(args, "badges", None)),
+        "phone_model": text(getattr(args, "model", None)),
     }
     return Settings.load(
         env_file=env_file, environ=os.environ, overrides=overrides
@@ -322,6 +400,102 @@ def _run_resolve(args: argparse.Namespace) -> int:
     return 1 if summary.error else 0
 
 
+def _ratio(text: str) -> float:
+    """Parse ``--auto-accept``: a number above 0 and at most 1."""
+    try:
+        value = float(text)
+    except ValueError:
+        value = 0.0
+    if not 0 < value <= 1:
+        msg = f"{text!r} is not a ratio between 0 and 1"
+        raise argparse.ArgumentTypeError(msg)
+    return value
+
+
+def _run_scan(args: argparse.Namespace) -> int:
+    """Read screenshots into the database."""
+    from PokemonGo.discovery import discover
+    from PokemonGo.geo import CachedGeocoder, build_geocoder
+    from PokemonGo.pipeline import (
+        Scanner,
+        ScanOptions,
+        ScanResult,
+        format_result,
+        format_summary,
+    )
+    from PokemonGo.prompts import NonInteractivePrompter, TerminalPrompter
+    from PokemonGo.store import open_store
+    from PokemonGo.vision.devices import get_profile
+    from PokemonGo.vision.reader import BadgeReader
+
+    if args.verbose:
+        logging.basicConfig(level=logging.INFO, format="%(message)s")
+    settings = _settings(args)
+    if settings.phone_model:
+        get_profile(settings.phone_model)  # fail now, not on every image
+    paths = discover(args.paths, settings.source, recursive=args.recursive)
+    if not paths:
+        print("No screenshots found.")
+        return 0
+
+    cache = None if args.no_cache else (args.cache or settings.geocode_cache)
+    geocoder = build_geocoder(settings.email, cache)
+    store = open_store(settings)
+    prompter = (
+        NonInteractivePrompter() if args.non_interactive else TerminalPrompter()
+    )
+    scanner = Scanner(
+        reader=BadgeReader(model=settings.phone_model),
+        store=store,
+        geocoder=geocoder,
+        prompter=prompter,
+        options=ScanOptions(
+            badges=settings.badges,
+            auto_accept=args.auto_accept,
+            dry_run=args.dry_run,
+            copy=args.copy,
+            sort=not args.no_sort,
+        ),
+    )
+
+    def show(result: ScanResult) -> None:
+        print(format_result(result, dry_run=args.dry_run, verbose=args.verbose))
+
+    print(f"Found {len(paths)} screenshot(s).")
+    try:
+        summary = scanner.run(paths, on_result=show)
+    except KeyboardInterrupt:
+        print(
+            "\nInterrupted. Everything finished so far has been saved.",
+            file=sys.stderr,
+        )
+        return 130
+    finally:
+        if isinstance(geocoder, CachedGeocoder):
+            geocoder.flush()
+        store.close()
+    print()
+    print(format_summary(summary, dry_run=args.dry_run))
+    return 2 if summary.needs_attention else 0
+
+
+def _run_doctor(args: argparse.Namespace) -> int:
+    """Check that the installation, settings and database are usable."""
+    from PokemonGo.doctor import run_checks
+
+    checks = run_checks(_settings(args))
+    for check in checks:
+        mark = "[ok]  " if check.ok else "[FAIL]"
+        print(f"{mark} {check.name}: {check.detail}")
+    failed = [c for c in checks if not c.ok]
+    print(
+        "Everything is in place."
+        if not failed
+        else f"{len(failed)} problem(s) to fix before scanning."
+    )
+    return 1 if failed else 0
+
+
 def _run_eval(args: argparse.Namespace) -> int:
     """Run the ``eval`` command and print its report."""
     from PokemonGo.evaluate import (
@@ -379,6 +553,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     try:
         if args.command == "eval":
             return _run_eval(args)
+        if args.command == "scan":
+            return _run_scan(args)
+        if args.command == "doctor":
+            return _run_doctor(args)
         if args.command == "resolve":
             return _run_resolve(args)
         if args.command == "upgrade":
