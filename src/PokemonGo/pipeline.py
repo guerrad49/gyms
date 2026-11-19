@@ -464,7 +464,9 @@ class Scanner:
             f"{SKIP_WORD!r} to leave it for later):",
             default=title,
         )
-        if answer is None or answer.strip().lower() == SKIP_WORD:
+        if answer is None:
+            return None, "no answer was given (the input ended)"
+        if answer.strip().lower() == SKIP_WORD:
             return None, "you chose to leave it for later"
         new_title = normalize_title(answer)
         if not new_title:

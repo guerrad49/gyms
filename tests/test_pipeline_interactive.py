@@ -319,3 +319,19 @@ def test_questions_are_asked_in_screenshot_order(tmp_path: Path) -> None:
     assert prompter.defaults[0] == "first"  # the read title is offered
     assert prompter.defaults[2] == "second"
     assert prompter.finished()
+
+
+def test_the_reason_tells_a_typed_skip_from_input_that_ended(
+    tmp_path: Path,
+) -> None:
+    reasons = {}
+    for label, answer in (("typed", "skip"), ("ended", None)):
+        env = Env(
+            tmp_path / label,
+            {"a.PNG": make_reading("new place")},
+            prompter=ScriptedPrompter(asks=[answer]),
+        )
+        [result] = env.run(env.shot("a.PNG")).results
+        reasons[label] = result.reason
+    assert reasons["typed"] == "you chose to leave it for later"
+    assert reasons["ended"] == "no answer was given (the input ended)"
