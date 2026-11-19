@@ -1,0 +1,22 @@
+name: release
+
+# Keeps a release pull request up to date with the next version number and
+# the generated CHANGELOG.md. Merging it creates the tag and a GitHub
+# release. The version of the package comes from that tag (hatch-vcs).
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: googleapis/release-please-action@v4
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
