@@ -1,93 +1,102 @@
-### Purpose
+# PokemonGo
 
-This package aims to aid PokemonGo players build and maintain a database of gyms with **GOLD** status. The in-game cap of 1000 most recent gyms was a key motivation for this development.
+Build and maintain a database of your Pokémon GO **gold gyms** from iPhone
+screenshots of the gym badges. The in-game list of gyms is capped at the
+1,000 most recent; this keeps a permanent record beyond that.
 
-- *Disclaimer: Functionality has ONLY been tested on iPhone models iSE, i11, i15.*
+For each screenshot it:
 
-***
+1. reads the title and the badge statistics (victories, time defended,
+   treats) with OCR;
+2. finds the gym, or creates it;
+3. looks up the city, county, state and country from the coordinates;
+4. saves the row to **Google Sheets**, **SQLite** or a **CSV** file;
+5. files the screenshot as `IMG_####.PNG`.
 
-### Pre-Requisites
-Clone this repo and follow the steps below.
+The database can be imported into **Google My Maps**.
 
-#### 1. SetUp
-Run the executable `setup.sh` which will
-* Create a **badges** directory and
-* Create a virtual environment with all the required python libraries.
+## Install
 
-#### 2. Google Sheet
-This is arguably the most tedious section.
-* The user must create a Google Sheet with the following headers:
-    
-    > uid | title | model | style | victories | defended | treats | coordinates | city | county | state
+You need Python 3.10 or newer and the Tesseract OCR program.
 
-* The `scanner.py` script will populate all BUT two fields. The fields *title* and *coordinates* must be **manually** populated for each row/gym. The *title* should use all lowercase and *coordinates* should be comma-separated with no space in between i.e. 40.758186,-73.985585. (Suggestion: Access **Ingress** maps for coordinates.)
-
-* Follow the process outlined for [GSPREAD](https://docs.gspread.org/en/latest/oauth2.html) in order to enable API Access to your Google Sheet. After understanding and completing the process, the created json file should be saved in the `requirements` directory.
-
-#### 3. Environment Variables
-Open `requirements/variables_template.env`, update each value and rename the file to `variables.env`. *Warning: Not renaming this file will raise errors when running main script.*<br>
-
-The directory structure should now look like below.
-```
-.
-├── .venv
-├── badges
-├── PokemonGo
-│    ├── __init__.py
-│    ├── exceptions.py
-│    ├── gym.py
-│    ├── image.py
-│    ├── sheet.py
-│    └── utils.py
-├── requirements
-│    ├── requirements.txt
-│    ├── variables.env
-│    └── /your/json/key/.json
-├── tests
-│    ├── __init__.py
-│    ├── gym_test.py
-│    ├── image_test.py
-│    └── images
-├── README.md
-├── scanner.py
-└── setup.sh
+```bash
+brew install tesseract                       # macOS; Debian: apt install tesseract-ocr
+git clone <repository-url> pogo && cd pogo
+python3 -m venv .venv && source .venv/bin/activate
+pip install -e ".[sheets]"                   # leave out [sheets] for CSV or SQLite
+pogo doctor                                  # checks everything
 ```
 
-***
+## Quick start
 
-### The Process
-
-Each image is scanned from ~/Downloads<sup>*</sup> directory and extracts image properties, badge statistics, and location details. During each iteration, if reading errors occur, the user is prompted for manual input. The corresponding row in user's Google Sheet and a local log (under `requirements`) are both updated. Each image is relocated to `badges` directory using the naming convention `IMG_####.PNG`. Lastly, the Google Sheet is sorted by geolocation.
-
-<sup>*</sup> <font size="2">This choice is convenient since using AirDrop will automatically send screenshots to this directory. However, the user can change this by modifying `utils.py`.</font>
-
-***
-
-### Usage
-
-Activate the virtual environment and run the script.
-```
-$ source .venv/bin/activate
-$ (.venv) ./scanner.py
-```
-
-Consider having your Google spreadsheet open to see the automation.
-
-Lastly, there is an option to update badge statistics. To do so, run as follows:
-```
-$ (.venv) ./scanner.py -u
-```
-However, note that this option **only** handles updates. Hence, scanning new badges in this option will not work.
-
-***
-
-### Testing
-
-Several unit tests have been written under `tests` directory. Within the virtual environment, the user can run all tests or a particular set of tests as shown below. Note the verbose flag.
+Create `variables.env`:
 
 ```
-(.venv) $ pytest -v tests
-(.venv) $ pytest -v tests/gym_test.py
+EMAIL=you@example.com
+BACKEND=csv
+CSV_PATH=gyms.csv
 ```
 
-For additional details on `pytest`, see the [documentation](https://docs.pytest.org/en/8.2.x/).
+AirDrop some badge screenshots to `~/Downloads`, then:
+
+```bash
+pogo scan --dry-run      # preview: changes nothing
+pogo scan                # scan for real; it asks when unsure
+pogo resolve             # fill in missing addresses
+pogo export my-maps maps.csv
+```
+
+## Commands
+
+| Command | Purpose |
+|---|---|
+| `pogo scan [PATH ...]` | Read screenshots (files or folders) into the database. |
+| `pogo resolve` | Fill in missing addresses from coordinates. |
+| `pogo upgrade` | Upgrade a version 1 database (with a backup). |
+| `pogo migrate` | Copy the database to another backend. |
+| `pogo export my-maps FILE` | Write a CSV for Google My Maps. |
+| `pogo doctor` | Check that everything is in place. |
+| `pogo eval` | Measure OCR accuracy against your own database. |
+
+Useful `scan` options: `--non-interactive` (never ask; leave anything
+uncertain for later), `--dry-run`, `--copy`, `--model`, `--recursive`.
+
+## Documentation
+
+The full guide is in the `docs/` folder and is published with GitHub Pages:
+installation, configuration, the scanning workflow, the database layout,
+Google Sheets setup, troubleshooting, and how the reading and matching work.
+Build it locally with:
+
+```bash
+pip install -e ".[docs]"
+sphinx-build -b html docs docs/_build/html
+```
+
+## Upgrading from version 1
+
+Your settings file and your data carry over. See the migration guide in the
+documentation; the short version is `pogo upgrade`.
+
+## Accuracy
+
+On the author's 1,191 screenshots, 98.2% of titles were read exactly and
+99.6% closely enough to match, and the statistics were read correctly
+essentially every time. About 0.4% needed a person.
+
+## Notes
+
+- iPhone screenshots only (three screen sizes so far).
+- For personal use. Address lookups use OpenStreetMap's Nominatim service
+  under its usage policy: one request per second, identified by your email.
+- Keep `variables.env`, your Google key, `badges/` and your database out of
+  version control: gym coordinates reveal where you have been.
+
+## Contributing
+
+See `CONTRIBUTING.md`. The code is typed, tested and documented, and the
+checks are the same ones CI runs.
+
+## License
+
+MIT. See `LICENSE`.
