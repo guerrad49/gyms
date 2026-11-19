@@ -4,8 +4,7 @@
       "release-type": "simple",
       "package-name": "PokemonGo",
       "changelog-path": "CHANGELOG.md",
-      "include-v-in-tag": true,
-      "release-as": "2.0.0"
+      "include-v-in-tag": true
     }
   }
 }
