@@ -19,8 +19,12 @@ extensions = [
     "sphinx.ext.viewcode",
     "sphinx.ext.doctest",
     "sphinx_autodoc_typehints",
+    "sphinxarg.ext",
     "myst_parser",
 ]
+
+myst_enable_extensions = ["colon_fence"]
+myst_heading_anchors = 3
 
 # numpy-style docstrings only
 napoleon_google_docstring = False
