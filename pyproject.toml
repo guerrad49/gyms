@@ -70,7 +70,6 @@ packages = ["src/PokemonGo"]
 line-length = 80
 target-version = "py310"
 src = ["src", "tests"]
-extend-exclude = ["legacy"]
 force-exclude = true
 
 [tool.ruff.lint]
@@ -100,7 +99,6 @@ known-first-party = ["PokemonGo", "tests"]
 python_version = "3.10"
 strict = true
 files = ["src", "tests"]
-exclude = ["^legacy/"]
 
 [[tool.mypy.overrides]]
 module = ["cv2.*", "pytesseract.*", "geopy.*", "gspread.*"]

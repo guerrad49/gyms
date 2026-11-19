@@ -8,8 +8,7 @@
     "minutes": 16,
     "treats": 121,
     "defended": 23.2611,
-    "style": "gold",
-    "known_defects": {}
+    "style": "gold"
   },
   "IMG_0002.PNG": {
     "model": "i11",
@@ -20,8 +19,7 @@
     "minutes": 7,
     "treats": 104,
     "defended": 21.7549,
-    "style": "gold",
-    "known_defects": {}
+    "style": "gold"
   },
   "IMG_0003.PNG": {
     "model": "i15",
@@ -32,11 +30,7 @@
     "minutes": 0,
     "treats": 13,
     "defended": 21.7917,
-    "style": "gold",
-    "known_defects": {
-      "title_single_pass": "D10",
-      "title_newlines": "D1"
-    }
+    "style": "gold"
   },
   "IMG_1131.PNG": {
     "model": "i11",
@@ -47,11 +41,7 @@
     "minutes": 0,
     "treats": 20,
     "defended": 102.2083,
-    "style": "100+ days",
-    "known_defects": {
-      "title_single_pass": "D10",
-      "title_newlines": "D1"
-    }
+    "style": "100+ days"
   },
   "IMG_1295.PNG": {
     "model": "i15",
@@ -62,11 +52,7 @@
     "minutes": 58,
     "treats": 16,
     "defended": 20.2903,
-    "style": "gold",
-    "known_defects": {
-      "title_single_pass": "D10",
-      "title_newlines": "D1"
-    }
+    "style": "gold"
   },
   "IMG_1305.PNG": {
     "model": "i15",
@@ -77,9 +63,6 @@
     "minutes": 56,
     "treats": 16,
     "defended": 18.0389,
-    "style": "gold",
-    "known_defects": {
-      "activity": "D1"
-    }
+    "style": "gold"
   }
 }

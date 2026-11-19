@@ -35,9 +35,6 @@ class Expected:
         Time defended in fractional days, rounded to 4 decimals.
     style : str
         ``"gold"`` or ``"100+ days"``.
-    known_defects : dict of str to str
-        Maps a check name to the defect id (see ``PLAN.md`` section 3)
-        that makes the *v1* code fail it.
     """
 
     file: str
@@ -50,7 +47,6 @@ class Expected:
     treats: int
     defended: float
     style: str
-    known_defects: dict[str, str]
 
     @property
     def path(self) -> Path:
